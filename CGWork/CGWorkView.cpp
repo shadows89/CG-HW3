@@ -41,18 +41,24 @@ double sesetivity = 1.0/15.0;
 
 typedef std::tuple<double, COLORREF,Model*> Ztuple;
 typedef std::tuple<CG_Point, COLORREF> hashTuple;
+typedef std::tuple<CG_Point, vec4> PhongTuple;
+
 
 std::vector<COLORREF>* vec_bitmap = NULL;
 std::vector<Model*>* pixelOwner = NULL;
 std::vector<Ztuple>* ZBuffer;
 std::unordered_map<int, hashTuple> pixelHashY;
 std::unordered_map<int, hashTuple> pixelHashX;
+
+std::unordered_map<int, PhongTuple> pixelHashYPhong;
+std::unordered_map<int, PhongTuple> pixelHashXPhong;
 Model* currentObejct = NULL;
 Model* changingObejct = NULL;
 
 int currentZ;
 vec4 currentPolyNormal = vec4(0, 0, 0);
 vec4 globalNormal;
+vec4 phongNormal;
 double polyMaxX = INT64_MIN, polyMinX = INT64_MAX , polyMaxY = INT64_MIN, polyMinY = INT64_MAX;
 int global_h;
 int global_w;
@@ -90,6 +96,7 @@ bool BBox = false;
 bool drawingBBox = false;
 bool polyFill = false;
 bool fillingPoly = false;
+bool onFrame = true;
 
 double F = -50;
 
@@ -169,7 +176,10 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_AXIS_XY, OnUpdateAxisXY)
 	ON_COMMAND(ID_POLYFILL, OnPolyFill)
 	ON_UPDATE_COMMAND_UI(ID_POLYFILL, OnPolyFillCheck)
-
+	ON_COMMAND(ID_LIGHT_SHADING_PHONG, OnLightShadingPhong)
+	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, OnUpdateLightShadingPhong)
+	ON_COMMAND(ID_LIGHT_SHADING_NOSHADING, OnLightNoShading)
+	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_NOSHADING, OnUpdateLightNoShading)
 
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -372,21 +382,39 @@ COLORREF CCGWorkView::clacColor(int x, int y){
 	
 	int z = currentZ;
 	int final_R, final_G, final_B;
-	int R = GetRValue(modelColor);
-	int G = GetGValue(modelColor);
-	int B = GetBValue(modelColor);
+	int R, G, B;
 	
-	
+	vec4 unitNormal;
+	if (m_nLightShading == ID_LIGHT_SHADING_FLAT){
+		unitNormal = vec4::normalize(currentPolyNormal);
+		R = GetRValue(modelColor);
+		G = GetGValue(modelColor);
+		B = GetBValue(modelColor);
+	}
+	else if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD){
+		unitNormal = vec4::normalize(globalNormal);
+		if (onFrame){
+			R = GetRValue(modelColor);
+			G = GetGValue(modelColor);
+			B = GetBValue(modelColor);
+		}
+		else{
+			R = GetRValue(globalCalculatedColor);
+			G = GetGValue(globalCalculatedColor);
+			B = GetBValue(globalCalculatedColor);
+		}
+	}
+	else if (m_nLightShading == ID_LIGHT_SHADING_PHONG){
+		unitNormal = vec4::normalize(phongNormal);
+		R = GetRValue(globalCalculatedColor);
+		G = GetGValue(globalCalculatedColor);
+		B = GetBValue(globalCalculatedColor);
+	}
 
 	final_R = m_ambientLight.colorR * m_lMaterialAmbient * R / 256;
 	final_G = m_ambientLight.colorG * m_lMaterialAmbient * G / 256;
 	final_B = m_ambientLight.colorB * m_lMaterialAmbient * B / 256;
 
-	vec4 unitNormal;
-	if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
-		unitNormal = vec4::normalize(currentPolyNormal);
-	else if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
-		unitNormal = vec4::normalize(globalNormal);
 
 	for (int i = 0; i < MAX_LIGHT; i++){
 		if (m_lights[i].enabled){
@@ -416,7 +444,6 @@ COLORREF CCGWorkView::clacColor(int x, int y){
 				N_L = unitNormal.dot(L);
 				if (N_L < 0)
 					continue;
-				break;
 				break;
 			case LIGHT_TYPE_SPOT:
 				break;
@@ -467,7 +494,12 @@ void  CCGWorkView::plotPixel(int x, int y){
 					else if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD){
 						calculatedColor = globalCalculatedColor;
 					}
-					//else if (m_nLightShading == ID_LIGHT_SHADING_PHONG) TODO
+					else if (m_nLightShading == ID_LIGHT_SHADING_PHONG){
+						calculatedColor = clacColor(x, y);
+					}
+					else {
+						calculatedColor = modelColor;
+					}
 					(*ZBuffer)[x + y*global_w] = Ztuple(currentZ, calculatedColor, currentObejct);
 				}
 				else
@@ -479,12 +511,71 @@ void  CCGWorkView::plotPixel(int x, int y){
 }
 
 void CCGWorkView::line(CG_Point p1, CG_Point p2){
-	if (m_bIsPerspective)
-		line(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3] );
-	else
-		line(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+	if (polyFill){
+		if (m_bIsPerspective){
+			if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
+				line1(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
+				line2(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+			if (m_nLightShading == ID_LIGHT_SHADING_PHONG)
+				line1(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+			if (m_nLightShading == ID_LIGHT_SHADING_NOSHADING)
+				line2(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+		}
+		//line(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3] );
+		else
+		{
+			if (m_nLightShading == ID_LIGHT_SHADING_FLAT)
+				line1(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
+				line2(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+			if (m_nLightShading == ID_LIGHT_SHADING_PHONG)
+				line3(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+			if (m_nLightShading == ID_LIGHT_SHADING_NOSHADING)
+				line1(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+		}
+	}
+	else{
+		if (m_bIsPerspective)
+			line(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+		else
+			line(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
+	}
+		//line(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
 }
 
+//TODO
+void CCGWorkView::hashPixelPhong(int x, int y, int z){
+	if (pixelHashXPhong.count(x) == 0){
+		PhongTuple newPhongTuple(CG_Point(x, y, z, 1), phongNormal);
+		pixelHashXPhong.insert({ x, newPhongTuple });
+	}
+	else{
+		fillingPoly = true;
+		onFrame = false;
+		PhongTuple tmp = pixelHashXPhong[x];
+		p1Normal = std::get<1>(tmp);
+		p2Normal = phongNormal;
+		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
+		fillingPoly = false;
+		onFrame = true;
+	}
+
+	if (pixelHashYPhong.count(y) == 0){
+		PhongTuple newPhongTuple(CG_Point(x, y, z, 1), phongNormal);
+		pixelHashYPhong.insert({ y, newPhongTuple });
+	}
+	else{
+		fillingPoly = true;
+		onFrame = false;
+		PhongTuple tmp = pixelHashYPhong[y];
+		p1Normal = std::get<1>(tmp);
+		p2Normal = phongNormal;
+		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
+		fillingPoly = false;
+		onFrame = true;
+	}
+}
 
 void CCGWorkView::hashPixel(int x, int y, int z){
 	if (pixelHashX.count(x) == 0){
@@ -493,54 +584,177 @@ void CCGWorkView::hashPixel(int x, int y, int z){
 	}
 	else{
 		fillingPoly = true;
+		onFrame = false;
 		hashTuple tmp = pixelHashX[x];
-		globalP1Color = std::get<1>(tmp);
-		globalP2Color = globalCalculatedColor;
+		globalP2Color = std::get<1>(tmp);
+		globalP1Color = globalCalculatedColor;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
+		onFrame = true;
 	}
+
 	if (pixelHashY.count(y) == 0){
 		hashTuple newHashTuple(CG_Point(x, y, z, 1), globalCalculatedColor);
-		pixelHashX.insert({ y, newHashTuple });
+		pixelHashY.insert({ y, newHashTuple });
 	}
 	else{
 		fillingPoly = true;
+		onFrame = false;
 		hashTuple tmp = pixelHashY[y];
-		globalP1Color = std::get<1>(tmp);
-		globalP2Color = globalCalculatedColor;
+		globalP2Color = std::get<1>(tmp);
+		globalP1Color = globalCalculatedColor;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
+		onFrame = true;
 	}
 }
 
-void updateGlobalColor(COLORREF p1Color, COLORREF p2Color,int x,int y,int x1,int y1,double dist){
-	double a = sqrt(pow(x - x1, 2) + pow(y - y1, 2)) / dist;
-	int R = GetRValue(p1Color)*a + GetRValue(p2Color)*(1 - a);
-	int G = GetGValue(p1Color)*a + GetGValue(p2Color)*(1 - a);
-	int B = GetBValue(p1Color)*a + GetBValue(p2Color)*(1 - a);
-	globalCalculatedColor = RGB(R, G, B);
+void updateGlobalColor(COLORREF p1Color, COLORREF p2Color,int x,int y,int x1,int y1,int z1,double dist){
+	
+	if (dist == 0)
+		globalCalculatedColor = p1Color;
+	else{
+		double a = sqrt(pow(x - x1, 2) + pow(y - y1, 2) + pow(currentZ - z1 ,2)) / dist;
+		int R = GetRValue(p2Color)*a + GetRValue(p1Color)*(1 - a);
+		int G = GetGValue(p2Color)*a + GetGValue(p1Color)*(1 - a);
+		int B = GetBValue(p2Color)*a + GetBValue(p1Color)*(1 - a);
+		globalCalculatedColor = RGB(R, G, B);
+	}
 }
 
-void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
-	int i, x,y,z,dx, dy, dz, l, m, n, x_inc, y_inc, z_inc, err_1, err_2, dx2, dy2, dz2;
-	int point[3];
+void updateGlobaPhongNormal(vec4 normal_1, vec4 normal_2, int x, int y, int x1, int y1,int z1, double dist){
+
+	if (dist == 0)
+		phongNormal = normal_1;
+	else{
+		double a = sqrt(pow(x - x1, 2) + pow(y - y1, 2) + pow(currentZ - z1, 2)) / dist;
+		phongNormal = normal_2 * a + normal_1 *(1 - a);
+	}
+}
+
+
+//Phong shading
+void CCGWorkView::line3(int x1, int y1, double z1, int x2, int y2, double z2){
+	int i, x, y, z, dx, dy, dz, l, m, n, x_inc, y_inc, z_inc, err_1, err_2, dx2, dy2, dz2;
+	vec4 normal_1;
+	vec4 normal_2;
+
+	double dist = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2) + pow(z1 - z2, 2));
+
+	normal_1 = p1Normal;
+	normal_2 = p2Normal;
+
+	x = x1;
+	y = y1;
+	z = z1;
+	dx = x2 - x1;
+	dy = y2 - y1;
+	dz = z2 - z1;
+	x_inc = (dx < 0) ? -1 : 1;
+	l = abs(dx);
+	y_inc = (dy < 0) ? -1 : 1;
+	m = abs(dy);
+	z_inc = (dz < 0) ? -1 : 1;
+	n = abs(dz);
+	dx2 = l << 1;
+	dy2 = m << 1;
+	dz2 = n << 1;
+
+	if ((l >= m) && (l >= n)) {
+		err_1 = dy2 - l;
+		err_2 = dz2 - l;
+		for (i = 0; i < l; i++) {
+			currentZ = z;
+			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixelPhong(x, y, z);
+			}
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dx2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dx2;
+			}
+			err_1 += dy2;
+			err_2 += dz2;
+			x += x_inc;
+		}
+	}
+	else if ((m >= l) && (m >= n)) {
+		err_1 = dx2 - m;
+		err_2 = dz2 - m;
+		for (i = 0; i < m; i++) {
+			currentZ = z;
+			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixelPhong(x, y, z);
+			}
+			if (err_1 > 0) {
+				x += x_inc;
+				err_1 -= dy2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dy2;
+			}
+			err_1 += dx2;
+			err_2 += dz2;
+			y += y_inc;
+		}
+	}
+	else {
+		err_1 = dy2 - n;
+		err_2 = dx2 - n;
+		for (i = 0; i < n; i++) {
+			currentZ = z;
+			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixelPhong(x, y, z);
+			}
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dz2;
+			}
+			if (err_2 > 0) {
+				x += x_inc;
+				err_2 -= dz2;
+			}
+			err_1 += dy2;
+			err_2 += dx2;
+			z += z_inc;
+		}
+	}
+	currentZ = z;
+	updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
+	plotPixel(x, y);
+	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+		hashPixel(x, y, z);
+	}
+}
+
+//Gauroud shading
+void CCGWorkView::line2(int x1, int y1, double z1, int x2, int y2, double z2){
+	int i, x, y, z, dx, dy, dz, l, m, n, x_inc, y_inc, z_inc, err_1, err_2, dx2, dy2, dz2;
 
 	COLORREF p1Color;
 	COLORREF p2Color;
 
-	double dist = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2));
+	double dist = sqrt(pow(x1 - x2, 2) + pow(y1 - y2, 2) + pow(z1 - z2, 2));
 
-	if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD){
-		if (fillingPoly){
-			p1Color = globalP1Color;
-			p2Color = globalP2Color;
-		}
-		else{
-			globalNormal = p1Normal;
-			p1Color = clacColor(x1, y1);
-			globalNormal = p2Normal;
-			p2Color = clacColor(x2, y2);
-		}
+	if (onFrame){
+		globalNormal = p1Normal;
+		p1Color = clacColor(x1, y1);
+		globalNormal = p2Normal;
+		p2Color = clacColor(x2, y2);
+	}
+	else{
+		p1Color = globalP1Color;
+		p2Color = globalP2Color;
 	}
 
 	x = x1;
@@ -564,8 +778,7 @@ void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
 		err_2 = dz2 - l;
 		for (i = 0; i < l; i++) {
 			currentZ = z;
-			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
-				updateGlobalColor(p1Color, p2Color, x, y, x1, y1,dist);
+			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
 			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
 				hashPixel(x, y, z);
@@ -588,8 +801,102 @@ void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
 		err_2 = dz2 - m;
 		for (i = 0; i < m; i++) {
 			currentZ = z;
-			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
-				updateGlobalColor(p1Color, p2Color, x, y, x1, y1, dist);
+			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixel(x, y, z);
+			}
+			if (err_1 > 0) {
+				x += x_inc;
+				err_1 -= dy2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dy2;
+			}
+			err_1 += dx2;
+			err_2 += dz2;
+			y += y_inc;
+		}
+	}
+	else {
+		err_1 = dy2 - n;
+		err_2 = dx2 - n;
+		for (i = 0; i < n; i++) {
+			currentZ = z;
+			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixel(x, y, z);
+			}
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dz2;
+			}
+			if (err_2 > 0) {
+				x += x_inc;
+				err_2 -= dz2;
+			}
+			err_1 += dy2;
+			err_2 += dx2;
+			z += z_inc;
+		}
+	}
+	currentZ = z;
+	updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
+	plotPixel(x, y);
+	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+		hashPixel(x, y, z);
+	}
+}
+
+//Flat shading or NO SHADING
+void CCGWorkView::line1(int x1, int y1, double z1, int x2, int y2, double z2){
+	int i, x,y,z,dx, dy, dz, l, m, n, x_inc, y_inc, z_inc, err_1, err_2, dx2, dy2, dz2;
+
+	x = x1;
+	y = y1;
+	z = z1;
+	dx = x2 - x1;
+	dy = y2 - y1;
+	dz = z2 - z1;
+	x_inc = (dx < 0) ? -1 : 1;
+	l = abs(dx);
+	y_inc = (dy < 0) ? -1 : 1;
+	m = abs(dy);
+	z_inc = (dz < 0) ? -1 : 1;
+	n = abs(dz);
+	dx2 = l << 1;
+	dy2 = m << 1;
+	dz2 = n << 1;
+
+	if ((l >= m) && (l >= n)) {
+		err_1 = dy2 - l;
+		err_2 = dz2 - l;
+		for (i = 0; i < l; i++) {
+			currentZ = z;
+			plotPixel(x, y);
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+				hashPixel(x, y, z);
+			}
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dx2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dx2;
+			}
+			err_1 += dy2;
+			err_2 += dz2;
+			x += x_inc;
+		}
+	}
+	else if ((m >= l) && (m >= n)) {
+		err_1 = dx2 - m;
+		err_2 = dz2 - m;
+		for (i = 0; i < m; i++) {
+			currentZ = z;
 			plotPixel(x,y);
 			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
 				hashPixel(x, y, z);
@@ -612,8 +919,6 @@ void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
 		err_2 = dx2 - n;
 		for (i = 0; i < n; i++) {
 			currentZ = z;
-			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
-				updateGlobalColor(p1Color, p2Color, x, y, x1, y1, dist);
 			plotPixel(x,y);
 			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
 				hashPixel(x, y, z);
@@ -632,8 +937,6 @@ void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
 		}
 	}
 	currentZ = z;
-	if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
-		updateGlobalColor(p1Color, p2Color, x, y, x1, y1, dist);
 	plotPixel(x, y);
 	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
 		hashPixel(x, y, z);
@@ -681,6 +984,88 @@ void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
 		}
 	}*/
 }
+
+//No fill
+void CCGWorkView::line(int x1, int y1, double z1, int x2, int y2, double z2){
+	int i, x, y, z, dx, dy, dz, l, m, n, x_inc, y_inc, z_inc, err_1, err_2, dx2, dy2, dz2;
+
+	x = x1;
+	y = y1;
+	z = z1;
+	dx = x2 - x1;
+	dy = y2 - y1;
+	dz = z2 - z1;
+	x_inc = (dx < 0) ? -1 : 1;
+	l = abs(dx);
+	y_inc = (dy < 0) ? -1 : 1;
+	m = abs(dy);
+	z_inc = (dz < 0) ? -1 : 1;
+	n = abs(dz);
+	dx2 = l << 1;
+	dy2 = m << 1;
+	dz2 = n << 1;
+
+	if ((l >= m) && (l >= n)) {
+		err_1 = dy2 - l;
+		err_2 = dz2 - l;
+		for (i = 0; i < l; i++) {
+			currentZ = z;
+			plotPixel(x, y);
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dx2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dx2;
+			}
+			err_1 += dy2;
+			err_2 += dz2;
+			x += x_inc;
+		}
+	}
+	else if ((m >= l) && (m >= n)) {
+		err_1 = dx2 - m;
+		err_2 = dz2 - m;
+		for (i = 0; i < m; i++) {
+			currentZ = z;
+			plotPixel(x, y);
+			if (err_1 > 0) {
+				x += x_inc;
+				err_1 -= dy2;
+			}
+			if (err_2 > 0) {
+				z += z_inc;
+				err_2 -= dy2;
+			}
+			err_1 += dx2;
+			err_2 += dz2;
+			y += y_inc;
+		}
+	}
+	else {
+		err_1 = dy2 - n;
+		err_2 = dx2 - n;
+		for (i = 0; i < n; i++) {
+			currentZ = z;
+			plotPixel(x, y);
+			if (err_1 > 0) {
+				y += y_inc;
+				err_1 -= dz2;
+			}
+			if (err_2 > 0) {
+				x += x_inc;
+				err_2 -= dz2;
+			}
+			err_1 += dy2;
+			err_2 += dx2;
+			z += z_inc;
+		}
+	}
+	currentZ = z;
+	plotPixel(x, y);
+}
+
 /*
 void CCGWorkView::small_slope_negative(int x1, int y1, double z1, int x2, int y2, double z2){
 	int x, y, dx, dy , d, delta_e, delta_ne;
@@ -1037,8 +1422,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
 			
-			p1Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->first());
-			p2Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->next());
+			p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
+			p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 
 			if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
@@ -1048,6 +1433,8 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
 				pixelHashX.clear();
 				pixelHashY.clear();
+				pixelHashXPhong.clear();
+				pixelHashYPhong.clear();
 				currentPolyNormal = m_translate*m_scale*m_rotate*model->position*(*dir);
 				//CG_Point polyNormal = camera.transformation().inverse()*m_translate*m_scale*m_rotate*(*mid - *dir);
 				p1 = polygon->first();
@@ -1070,14 +1457,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					}
 
 					p1Normal = p2Normal;
-					p2Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->next());
+					p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 				}
 
 				vec4 p1Offset = m_pipeline*model->position*(*p1);
 				vec4 p2Offset = m_pipeline*model->position*(*p2);
 
 				//p1Normal = p2Normal;
-				p2Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->first());
+				p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
 				
 				line(p1Offset, p2Offset);
 
@@ -1345,6 +1732,7 @@ void CCGWorkView::OnUpdateAxisZ(CCmdUI* pCmdUI)
 void CCGWorkView::OnLightShadingFlat()
 {
 	m_nLightShading = ID_LIGHT_SHADING_FLAT;
+	Invalidate();
 }
 
 void CCGWorkView::OnUpdateLightShadingFlat(CCmdUI* pCmdUI)
@@ -1356,11 +1744,34 @@ void CCGWorkView::OnUpdateLightShadingFlat(CCmdUI* pCmdUI)
 void CCGWorkView::OnLightShadingGouraud()
 {
 	m_nLightShading = ID_LIGHT_SHADING_GOURAUD;
+	Invalidate();
 }
 
 void CCGWorkView::OnUpdateLightShadingGouraud(CCmdUI* pCmdUI)
 {
 	pCmdUI->SetCheck(m_nLightShading == ID_LIGHT_SHADING_GOURAUD);
+}
+
+void CCGWorkView::OnLightShadingPhong()
+{
+	m_nLightShading = ID_LIGHT_SHADING_PHONG;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateLightShadingPhong(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_nLightShading == ID_LIGHT_SHADING_PHONG);
+}
+
+void CCGWorkView::OnLightNoShading()
+{
+	m_nLightShading = ID_LIGHT_SHADING_NOSHADING;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateLightNoShading(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(m_nLightShading == ID_LIGHT_SHADING_NOSHADING);
 }
 
 // LIGHT SETUP HANDLER ///////////////////////////////////////////

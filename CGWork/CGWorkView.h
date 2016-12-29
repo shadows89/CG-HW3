@@ -57,6 +57,9 @@ private:
 	int m_nMaterialCosineFactor;		// The cosine factor for the specular
 
 	void line(int x1, int y1, double z1, int x2, int y2, double z2);
+	void line1(int x1, int y1, double z1, int x2, int y2, double z2);
+	void line2(int x1, int y1, double z1, int x2, int y2, double z2);
+	void line3(int x1, int y1, double z1, int x2, int y2, double z2);
 	void line(CG_Point p1, CG_Point p2);
 	void small_slope_negative(int x1, int y1, double z1, int x2, int y2, double z2);
 	void small_slope_positive(int x1, int y1, double z1, int x2, int y2, double z2);
@@ -67,6 +70,7 @@ private:
 	void resetTransformations();
 	void drawBBox(Model* model);
 	void hashPixel(int x, int y, int z);
+	void hashPixelPhong(int x, int y, int z);
 	COLORREF clacColor(int x, int y);
 
 	LightParams m_lights[MAX_LIGHT];	//configurable lights array
@@ -166,6 +170,10 @@ protected:
 	afx_msg void OnUpdateAxisXY(CCmdUI* pCmdUI);
 	afx_msg void OnPolyFill();
 	afx_msg void OnPolyFillCheck(CCmdUI* pCmdUI);
+	afx_msg void OnLightShadingPhong();
+	afx_msg void OnUpdateLightShadingPhong(CCmdUI* pCmdUI);
+	afx_msg void OnLightNoShading();
+	afx_msg void OnUpdateLightNoShading(CCmdUI* pCmdUI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
