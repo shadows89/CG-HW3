@@ -1029,32 +1029,44 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			currentObejct = model;
 			if(colorNotChange)
 				modelColor = model->color;
-			CG_NormalList* polynormal = model->calculatedPolygonNormals;
+			CG_NormalList* polynormal = model->polygonNormals;
 			
-			if (model->polygons->size != model->calculatedPolygonNormals->size){
+			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
-			}
+			}*/
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
 			
 			p1Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->first());
 			p2Normal = m_translate*m_scale*m_rotate*model->position*(*model->vertexNormals->next());
 
-			if (model->polygons->size != model->calculatedPolygonNormals->size){
+			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
-			}
+			}*/
 
-
+			vec4 vp = camera.transformation().inverse()*vec4(0, 0, 0, 1);
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
+				currentPolyNormal = m_translate*m_scale*m_rotate*(*dir);
+				vec4 currentMid = m_translate*m_scale*m_rotate*(*mid);
+
+				vec4 v = currentMid - vp;
+				if (v.dot(currentPolyNormal) > 0){
+					dir = polynormal->next();
+					mid = model->polygonMids->next();
+					continue;
+				}
+				
 				pixelHashX.clear();
 				pixelHashY.clear();
-				currentPolyNormal = m_translate*m_scale*m_rotate*model->position*(*dir);
+				
+				
 				//CG_Point polyNormal = camera.transformation().inverse()*m_translate*m_scale*m_rotate*(*mid - *dir);
 				p1 = polygon->first();
 				/*if ((*p1 - camera.eye()).dot(polyNormal) >= 0)
 					continue;*/
 				
 				p2 = polygon->next();
+				
 				while (true){
 					vec4 p1Offset = m_pipeline*model->position*(*p1);
 					vec4 p2Offset = m_pipeline*model->position*(*p2);
