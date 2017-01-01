@@ -174,6 +174,17 @@ protected:
 	afx_msg void OnUpdateLightShadingPhong(CCmdUI* pCmdUI);
 	afx_msg void OnLightNoShading();
 	afx_msg void OnUpdateLightNoShading(CCmdUI* pCmdUI);
+	afx_msg void OnBackgroundImageLoad();
+	afx_msg void OnBackgroundImageReset();
+	afx_msg void OnBackgroundImageViewNormal();
+	afx_msg void OnUpdateBackgroundImageViewNormal(CCmdUI* pCmdUI);
+	afx_msg void OnBackgroundImageViewStrech();
+	afx_msg void OnUpdateBackgroundImageViewStrech(CCmdUI* pCmdUI);
+	afx_msg void OnBackgroundImageViewRepeat();
+	afx_msg void OnUpdateBackgroundImageViewRepeat(CCmdUI* pCmdUI);
+
+
+
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
