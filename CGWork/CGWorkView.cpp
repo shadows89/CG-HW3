@@ -1429,15 +1429,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 			vec4 vp = camera.transformation()[2];
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
-				currentPolyNormal = m_translate*m_scale*m_rotate*(*dir);
-				vec4 currentMid = m_translate*m_scale*m_rotate*(*mid);
-
-				vec4 v = currentMid - vp;
-				if (v.dot(currentPolyNormal) > 0){
-					dir = polynormal->next();
-					mid = model->polygonMids->next();
-					continue;
-				}
 				
 				pixelHashX.clear();
 				pixelHashY.clear();
@@ -1450,11 +1441,11 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				
 				
 				vec4 v = *mid - vp;
-				if (v.dot(currentMid-currentPolyNormal) > 0){
+				/*if (v.dot(currentMid-currentPolyNormal) > 0){
 					dir = polynormal->next();
 					mid = model->polygonMids->next();
 					continue;
-				}
+				}*/
 
 				p1 = polygon->first();
 				p2 = polygon->next();
