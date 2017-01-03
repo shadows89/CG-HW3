@@ -35,4 +35,8 @@ public:
 		return c_eye;
 	}
 
+	void updateEye(vec4 newEye)
+	{
+		c_eye = newEye;
+	}
 };

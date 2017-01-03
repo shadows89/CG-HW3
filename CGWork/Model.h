@@ -2,14 +2,20 @@
 #define MODEL_H
 
 #include <vector>
+#include <unordered_map>
 #include "LinkedList.h"
 #include "mat4.hpp"
+
 
 
 typedef vec4 CG_Point;
 typedef LinkedList<CG_Point*> CG_Polygon;
 typedef LinkedList<CG_Point*> CG_NormalList;
 typedef LinkedList<CG_Polygon*> CG_PolygonList;
+
+
+typedef std::unordered_map<std::string, vec4 > VertexNormalHash;
+
 
 class Model{
 public:
@@ -20,6 +26,8 @@ public:
 	CG_NormalList* calculatedVertexNormals;
 	CG_Polygon* vertices;
 	CG_Polygon* polygonMids;
+	VertexNormalHash givenVertexNormalHash;
+	VertexNormalHash calculatedVertexNormalHash;
 	COLORREF color;
 
 	mat4 position;
@@ -75,7 +83,7 @@ public:
 			else{
 				vec4 tmp1 = *p1 - *p2;
 				vec4 tmp2 = *p2 - *p3;
-				vec4 cross = vec4::cross(tmp1, tmp2);
+				vec4 cross = vec4::normalize(vec4::cross(tmp1, tmp2));
 				if (cross.isZero()){
 					while (p3 != NULL){
 						p1 = p2;
@@ -85,7 +93,7 @@ public:
 							break;
 						vec4 tmp1 = *p1 - *p2;
 						vec4 tmp2 = *p2 - *p3;
-						vec4 cross = vec4::cross(tmp1, tmp2);
+						vec4 cross = vec4::normalize(vec4::cross(tmp1, tmp2));
 						if (!cross.isZero()){
 							calculatedPolygonNormals->add(new vec4(cross));
 							break;
@@ -111,8 +119,9 @@ public:
 				}
 				polyNormal = calculatedPolygonNormals->next();
 			}
-			*normal = (*normal) * (1.0 / count);
+			*normal = vec4::normalize((*normal) * (1.0 / count));
 			calculatedVertexNormals->add(normal);
+			calculatedVertexNormalHash.insert({ (*vertex).toString(), *normal });
 		}
 	}
 

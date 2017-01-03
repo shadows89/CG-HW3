@@ -1,39 +1,47 @@
-﻿Build started 12/29/2016 20:23:06.
+﻿Build started 1/2/2017 19:40:53.
      1>Project "B:\234325\CG-HW3\CGWork\CGWork.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I..\pngLib /I..\include /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _WINDOWS /D WINVER=0x501 /D NO_WARN_MBCS_MFC_DEPRECATION /D _VC80_UPGRADE=0x0710 /D _UNICODE /D UNICODE /D _AFXDLL /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo".\Debug/" /Fd".\Debug/vc120.pdb" /Gd /TP /wd4273 /wd4996 /wd4800 /analyze- /errorReport:prompt CGWorkView.cpp
          CGWorkView.cpp
-     1>b:\234325\cg-hw3\cgwork\model.h(27): warning C4305: 'initializing' : truncation from '__int64' to 'double'
-     1>b:\234325\cg-hw3\cgwork\model.h(28): warning C4305: 'initializing' : truncation from '__int64' to 'double'
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(56): warning C4305: 'initializing' : truncation from '__int64' to 'double'
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(402): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(403): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(404): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(445): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(446): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(447): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(505): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(507): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(509): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(511): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\model.h(35): warning C4305: 'initializing' : truncation from '__int64' to 'double'
+     1>b:\234325\cg-hw3\cgwork\model.h(36): warning C4305: 'initializing' : truncation from '__int64' to 'double'
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(62): warning C4305: 'initializing' : truncation from '__int64' to 'double'
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(414): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(415): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(416): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(457): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(458): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(459): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
      1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(517): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
      1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(519): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
      1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(521): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
      1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(523): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(528): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(530): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(574): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(575): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(576): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(588): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(591): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(697): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(700): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(802): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(805): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(937): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(940): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
-     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(1351): warning C4305: 'argument' : truncation from '__int64' to 'const double'
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(529): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(531): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(533): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(535): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(540): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(542): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(615): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(616): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(617): warning C4244: 'initializing' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(646): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(649): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(665): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(688): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(711): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(730): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(759): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(762): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(778): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(801): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(824): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(843): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(856): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(859): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(991): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(994): warning C4244: '=' : conversion from 'double' to 'int', possible loss of data
+     1>b:\234325\cg-hw3\cgwork\cgworkview.cpp(1405): warning C4305: 'argument' : truncation from '__int64' to 'const double'
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"..\bin\Debug\CGWork.exe" /INCREMENTAL /NOLOGO /LIBPATH:..\pngLib /LIBPATH:..\iritLib GLU32.LIB zlibd.lib libpngd.lib iritD.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /manifestinput:"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\Include\Manifest\dpiaware.manifest" /DEBUG /PDB:".\Debug/CGWork.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /ENTRY:"wWinMainCRTStartup" /DYNAMICBASE:NO /IMPLIB:"..\bin\Debug\CGWork.lib" /MACHINE:X86 /SAFESEH .\Debug\CGWork.res
          .\Debug/CGWork.obj
@@ -51,4 +59,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:03.62
+Time Elapsed 00:00:03.50

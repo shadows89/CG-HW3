@@ -6,6 +6,7 @@
 #include "SensetivityDialog.h"
 #include "afxdialogex.h"
 
+extern double minZ;
 
 // SensetivityDialog dialog
 

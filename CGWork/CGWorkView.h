@@ -60,7 +60,7 @@ private:
 	void line1(int x1, int y1, double z1, int x2, int y2, double z2);
 	void line2(int x1, int y1, double z1, int x2, int y2, double z2);
 	void line3(int x1, int y1, double z1, int x2, int y2, double z2);
-	void line(CG_Point p1, CG_Point p2);
+	void line(vec4 p1, vec4 p2);
 	void small_slope_negative(int x1, int y1, double z1, int x2, int y2, double z2);
 	void small_slope_positive(int x1, int y1, double z1, int x2, int y2, double z2);
 	void big_slope_positive(int x1, int y1, double z1, int x2, int y2, double z2);

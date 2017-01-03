@@ -98,7 +98,7 @@ bool polyFill = false;
 bool fillingPoly = false;
 bool onFrame = true;
 
-double F = -50;
+double F = - 50;
 
 typedef struct{
 	CG_Point point;
@@ -324,7 +324,7 @@ void CCGWorkView::resetTransformations(){
 	/*camera.lookAt(vec4(minX, maxY, 3, 1), vec4(minX,maxY, 0, 0), vec4(0, -1, 0, 1));
 	*/
 	/*camera.lookAt(vec4(0.5, 0.5, 0, 1.0), vec4(0.5, 0.5, -0.1, 1.0), vec4(0, -1, 0, 1.0));*/
-	camera.lookAt(vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, 0, 1.0), vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, -0.1, 1.0), vec4(0, -1, 0, 1.0));
+	camera.lookAt(vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, maxZ,0), vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, -0.1, 1.0), vec4(0, -1, 0, 1.0));
 	m_scale = mat4::scale(1.0);
 
 	m_translate = mat4::translate(vec4(0, 0, 0));
@@ -406,9 +406,9 @@ COLORREF CCGWorkView::clacColor(int x, int y){
 	}
 	else if (m_nLightShading == ID_LIGHT_SHADING_PHONG){
 		unitNormal = vec4::normalize(phongNormal);
-		R = GetRValue(globalCalculatedColor);
-		G = GetGValue(globalCalculatedColor);
-		B = GetBValue(globalCalculatedColor);
+		R = GetRValue(modelColor);
+		G = GetGValue(modelColor);
+		B = GetBValue(modelColor);
 	}
 
 	final_R = m_ambientLight.colorR * m_lMaterialAmbient * R / 256;
@@ -552,13 +552,13 @@ void CCGWorkView::hashPixelPhong(int x, int y, int z){
 	}
 	else{
 		fillingPoly = true;
-		onFrame = false;
+		
 		PhongTuple tmp = pixelHashXPhong[x];
 		p1Normal = std::get<1>(tmp);
 		p2Normal = phongNormal;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
-		onFrame = true;
+
 	}
 
 	if (pixelHashYPhong.count(y) == 0){
@@ -567,13 +567,13 @@ void CCGWorkView::hashPixelPhong(int x, int y, int z){
 	}
 	else{
 		fillingPoly = true;
-		onFrame = false;
+
 		PhongTuple tmp = pixelHashYPhong[y];
 		p1Normal = std::get<1>(tmp);
 		p2Normal = phongNormal;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
-		onFrame = true;
+
 	}
 }
 
@@ -584,13 +584,11 @@ void CCGWorkView::hashPixel(int x, int y, int z){
 	}
 	else{
 		fillingPoly = true;
-		onFrame = false;
 		hashTuple tmp = pixelHashX[x];
 		globalP2Color = std::get<1>(tmp);
 		globalP1Color = globalCalculatedColor;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
-		onFrame = true;
 	}
 
 	if (pixelHashY.count(y) == 0){
@@ -599,13 +597,12 @@ void CCGWorkView::hashPixel(int x, int y, int z){
 	}
 	else{
 		fillingPoly = true;
-		onFrame = false;
 		hashTuple tmp = pixelHashY[y];
 		globalP2Color = std::get<1>(tmp);
 		globalP1Color = globalCalculatedColor;
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
-		onFrame = true;
+
 	}
 }
 
@@ -1414,34 +1411,43 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			currentObejct = model;
 			if(colorNotChange)
 				modelColor = model->color;
-			CG_NormalList* polynormal = model->calculatedPolygonNormals;
+			CG_NormalList* polynormal = model->polygonNormals;
 			
-			if (model->polygons->size != model->calculatedPolygonNormals->size){
+			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
-			}
+			}*/
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
 			
-			p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
+			/*p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
 			p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 
-			if (model->polygons->size != model->calculatedPolygonNormals->size){
+			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
-			}
+			}*/
 
-
+			vec4 vp = camera.transformation()[2];
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
 				pixelHashX.clear();
 				pixelHashY.clear();
 				pixelHashXPhong.clear();
 				pixelHashYPhong.clear();
+			
+				vec4 currentMid = m_translate*m_scale*m_rotate*model->position*(*mid);
 				currentPolyNormal = m_translate*m_scale*m_rotate*model->position*(*dir);
-				//CG_Point polyNormal = camera.transformation().inverse()*m_translate*m_scale*m_rotate*(*mid - *dir);
-				p1 = polygon->first();
-				/*if ((*p1 - camera.eye()).dot(polyNormal) >= 0)
-					continue;*/
 				
+				
+				vec4 v = *mid - vp;
+				if (v.dot(currentMid-currentPolyNormal) > 0){
+					dir = polynormal->next();
+					mid = model->polygonMids->next();
+					continue;
+				}
+
+				p1 = polygon->first();
 				p2 = polygon->next();
+				p1Normal =m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()];
+				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
 				while (true){
 					vec4 p1Offset = m_pipeline*model->position*(*p1);
 					vec4 p2Offset = m_pipeline*model->position*(*p2);
@@ -1457,14 +1463,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					}
 
 					p1Normal = p2Normal;
-					p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
+					p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
 				}
 
 				vec4 p1Offset = m_pipeline*model->position*(*p1);
 				vec4 p2Offset = m_pipeline*model->position*(*p2);
 
 				//p1Normal = p2Normal;
-				p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
+				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
 				
 				line(p1Offset, p2Offset);
 
@@ -1835,7 +1841,7 @@ void CCGWorkView::OnMouseMove(UINT nFlags, CPoint point){
 				switch (m_nAxis){
 				case ID_AXIS_X:
 					camera.transformation().updateTranslate(vec4(-deltaX/5, 0, 0));
-
+	
 					break;
 				case ID_AXIS_Y:
 					camera.transformation().updateTranslate(vec4(0, -deltaX / 5, 0));
