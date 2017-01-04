@@ -1407,11 +1407,12 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		CG_Point* p1;
 		CG_Point* p2;
 		CG_Point* tmp;
+		vec4 vp = vec4::normalize(camera.transformation()[2]);
 		for (Model* model = models.first(); model != NULL; model = models.next()){
 			currentObejct = model;
 			if(colorNotChange)
 				modelColor = model->color;
-			CG_NormalList* polynormal = model->polygonNormals;
+			CG_NormalList* polynormal = model->calculatedPolygonNormals;
 			
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
@@ -1427,7 +1428,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			}*/
 
 
-			vec4 vp = camera.transformation()[2];
+			
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
 				
 				pixelHashX.clear();
@@ -1436,16 +1437,19 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				pixelHashXPhong.clear();
 				pixelHashYPhong.clear();
 			
-				vec4 currentMid = m_translate*m_scale*m_rotate*model->position*(*mid);
-				currentPolyNormal = m_translate*m_scale*m_rotate*model->position*(*dir);
+				vec4 currentMid = m_translate*m_rotate*model->position*(*mid);
+				currentPolyNormal = m_translate*m_rotate*model->position*(*dir);
 				
 				
-				vec4 v = *mid - vp;
-				/*if (v.dot(currentMid-currentPolyNormal) > 0){
+				if (m_bIsPerspective){
+					vp = camera.eye() - currentMid;
+				}
+				
+				if (vp.dot(currentMid - currentPolyNormal) > 0){
 					dir = polynormal->next();
 					mid = model->polygonMids->next();
 					continue;
-				}*/
+				}
 
 				p1 = polygon->first();
 				p2 = polygon->next();
@@ -1846,18 +1850,19 @@ void CCGWorkView::OnMouseMove(UINT nFlags, CPoint point){
 				switch (m_nAxis){
 				case ID_AXIS_X:
 					camera.transformation().updateTranslate(vec4(-deltaX/5, 0, 0));
-	
+					camera.updateEye(mat4::translate(vec4(-deltaX / 5, 0, 0))*camera.eye());
 					break;
 				case ID_AXIS_Y:
 					camera.transformation().updateTranslate(vec4(0, -deltaX / 5, 0));
-
+					camera.updateEye(mat4::translate(vec4(0,-deltaX / 5, 0))*camera.eye());
 					break;
 				case ID_AXIS_Z:
 					camera.transformation().updateTranslate(vec4(0, 0, -deltaX / 5));
-
+					camera.updateEye(mat4::translate(vec4(0,0,-deltaX / 5))*camera.eye());
 					break;
 				case ID_AXIS_XY:
 					camera.transformation().updateTranslate(vec4(-deltaX / 5, -deltaY / 5, 0));
+					camera.updateEye(mat4::translate(vec4(-deltaX / 5, -deltaY / 5, 0))*camera.eye());
 					break;
 				}
 				break;
@@ -1865,6 +1870,7 @@ void CCGWorkView::OnMouseMove(UINT nFlags, CPoint point){
 				switch (m_nAxis){
 				case ID_AXIS_X:
 					camera.setTransformation(camera.transformation() * mat4::rotateX(deltaX / 5));
+					camera.updateEye(mat4::translate(vec4(-deltaX / 5, -deltaY / 5, 0))*camera.eye());
 					break;
 				case ID_AXIS_Y:
 					camera.setTransformation(camera.transformation() * mat4::rotateY(deltaX / 5));
