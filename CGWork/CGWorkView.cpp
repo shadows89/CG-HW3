@@ -107,7 +107,8 @@ typedef struct{
 }PointData;
 
 
-
+CString _backgroundPngPath = "";
+int _backgroundImageState = 0;
 // Use this macro to display text messages in the status bar.
 #define STATUS_BAR_TEXT(str) (((CMainFrame*)GetParentFrame())->getStatusBar().SetWindowText(str))
 
@@ -180,6 +181,15 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_PHONG, OnUpdateLightShadingPhong)
 	ON_COMMAND(ID_LIGHT_SHADING_NOSHADING, OnLightNoShading)
 	ON_UPDATE_COMMAND_UI(ID_LIGHT_SHADING_NOSHADING, OnUpdateLightNoShading)
+	ON_COMMAND(ID_BACKGROUNDIMAGE_LOAD, OnBackgroundImageLoad)
+	ON_COMMAND(ID_BACKGROUNDIMAGE_RESET, OnBackgroundImageReset)
+	ON_COMMAND(ID_VIEW_NORMAL, OnBackgroundImageViewNormal)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_NORMAL, OnUpdateBackgroundImageViewNormal)
+	ON_COMMAND(ID_VIEW_STRECH, OnBackgroundImageViewStrech)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_STRECH, OnUpdateBackgroundImageViewStrech)
+	ON_COMMAND(ID_VIEW_REPEAT, OnBackgroundImageViewRepeat)
+	ON_UPDATE_COMMAND_UI(ID_VIEW_REPEAT, OnUpdateBackgroundImageViewRepeat)
+
 
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -195,6 +205,74 @@ void auxSolidCone(GLdouble radius, GLdouble height) {
 
 /////////////////////////////////////////////////////////////////////////////
 // CCGWorkView construction/destruction
+
+void CCGWorkView::OnBackgroundImageViewNormal(){
+	if (_backgroundImageState != 0){
+		_backgroundImageState = 0;
+		if (_backgroundPngPath != ""){
+			//CGSkelProcessIritDataFiles(m_strItdFileName, 1);
+			Invalidate();
+		}
+	}	
+}
+void CCGWorkView::OnUpdateBackgroundImageViewNormal(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(_backgroundImageState == 0);
+}
+
+void CCGWorkView::OnBackgroundImageViewStrech(){
+	if (_backgroundImageState != 1){
+		_backgroundImageState = 1;
+		if (_backgroundPngPath != ""){
+			//CGSkelProcessIritDataFiles(m_strItdFileName, 1);
+			Invalidate();
+		}
+	}
+}
+void CCGWorkView::OnUpdateBackgroundImageViewStrech(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(_backgroundImageState == 1);
+}
+void CCGWorkView::OnBackgroundImageViewRepeat(){
+	if (_backgroundImageState != 2){
+		_backgroundImageState = 2;
+		if (_backgroundPngPath != ""){
+			//CGSkelProcessIritDataFiles(m_strItdFileName, 1);
+			Invalidate();
+		}
+	}
+}
+void CCGWorkView::OnUpdateBackgroundImageViewRepeat(CCmdUI* pCmdUI)
+{
+	pCmdUI->SetCheck(_backgroundImageState == 2);
+}
+
+void CCGWorkView::OnBackgroundImageLoad(){
+	TCHAR szFilters[] = _T("PNG Files (*.png)|*.png");
+
+	CFileDialog dlg(TRUE, _T("png"), _T("*.png"), OFN_FILEMUSTEXIST | OFN_HIDEREADONLY, szFilters);
+
+	if (dlg.DoModal() == IDOK) {
+		_backgroundPngPath = dlg.GetPathName();		// Full path and filename
+
+		//CGSkelProcessIritDataFiles(m_strItdFileName, 1);
+		// Open the file and read it.
+		// Your code here...
+
+		Invalidate();	// force a WM_PAINT for drawing.
+	}
+
+}
+
+
+void CCGWorkView::OnBackgroundImageReset(){
+	_backgroundPngPath = "";
+	// Open the file and read it.
+	// Your code here...
+
+	Invalidate();	// force a WM_PAINT for drawing.
+}
+
 
 CCGWorkView::CCGWorkView()
 {
@@ -1403,6 +1481,83 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	vec_bitmap = new std::vector<COLORREF>((w + 1)*(h + 1), backgroundColor);
 	pixelOwner = new std::vector<Model*>((w + 1)*(h + 1), NULL);
 	ZBuffer = new std::vector<Ztuple>((w + 1)*(h + 1), Ztuple(INT64_MIN, backgroundColor, NULL));
+	if (_backgroundPngPath != ""){
+		CStringA CStr(_backgroundPngPath);
+		PngWrapper png((const char *)CStr);
+		png.ReadPng();
+
+		int pngwidth = png.GetWidth();
+		int pngheight = png.GetHeight();
+
+		if (_backgroundImageState==2){
+			//Repeat mode
+			for (int i = 0; i < h; i++){
+				for (int j = 0; j < w; j++){
+					int index = i*w + j;
+
+					/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+					int color = png.GetValue(j%pngwidth, i%pngheight);
+					COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+					//int index = i*factorH + j*global_w*factorW;
+
+
+
+					if (index < ZBuffer->size()){
+						(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+					}
+					else{
+						int jj = 3;
+					}
+				}
+			}
+		}
+		else if(_backgroundImageState==1){
+			//Strech mode
+			double factorW = (double)pngwidth / global_w;
+			double factorH = (double)pngheight / global_h;
+
+
+			for (int i = 0; i < h; i++){
+				for (int j = 0; j < w; j++){
+					int index = i*w + j;
+
+					/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+					int color = png.GetValue(floor(j*factorW), floor(i*factorH));
+					COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+					//int index = i*factorH + j*global_w*factorW;
+
+					if (index < ZBuffer->size()){
+						(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+					}
+					else{
+						int jj = 3;
+					}
+				}
+			}
+		}
+		else{
+			for (int i = 0; i < h; i++){
+				for (int j = 0; j < w; j++){
+					if (i>pngheight || j>pngwidth){
+						continue;
+					}
+					int index = i*w + j;
+
+					/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+					int color = png.GetValue(j, i);
+					COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+					//int index = i*factorH + j*global_w*factorW;
+
+					if (index < ZBuffer->size()){
+						(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+					}
+					else{
+						int jj = 3;
+					}
+				}
+			}
+		}
+	}
 	if (models.getSize() != 0){
 		CG_Point* p1;
 		CG_Point* p2;

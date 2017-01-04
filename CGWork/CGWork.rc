@@ -62,6 +62,7 @@ BEGIN
     BUTTON      ID_EVERYTHING
     BUTTON      ID_SINGLE
     BUTTON      ID_POLYFILL
+    BUTTON      ID_BUTTON32826
 END
 
 
@@ -107,6 +108,17 @@ BEGIN
         END
         MENUITEM SEPARATOR
         MENUITEM "Settings",                    ID_VIEW_SETTINGS
+        POPUP "Background Image"
+        BEGIN
+            MENUITEM "Load",                        ID_BACKGROUNDIMAGE_LOAD
+            MENUITEM "Reset",                       ID_BACKGROUNDIMAGE_RESET
+            POPUP "View"
+            BEGIN
+                MENUITEM "Normal",                      ID_VIEW_NORMAL
+                MENUITEM "Strech",                      ID_VIEW_STRECH
+                MENUITEM "Repeat",                      ID_VIEW_REPEAT
+            END
+        END
     END
     POPUP "A&ction"
     BEGIN
@@ -132,8 +144,8 @@ BEGIN
         BEGIN
             MENUITEM "&Flat",                       ID_LIGHT_SHADING_FLAT
             MENUITEM "&Gouraud",                    ID_LIGHT_SHADING_GOURAUD
-			MENUITEM "Phong",						ID_LIGHT_SHADING_PHONG
-			MENUITEM "No Shading",					ID_LIGHT_SHADING_NOSHADING
+            MENUITEM "Phong",                       ID_LIGHT_SHADING_PHONG
+            MENUITEM "No Shading",                  ID_LIGHT_SHADING_NOSHADING
         END
         MENUITEM "&Parameters...",              ID_LIGHT_CONSTANTS
     END

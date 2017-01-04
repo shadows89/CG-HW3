@@ -79,13 +79,21 @@
 #define ID_POLYFILL                     32823
 #define ID_LIGHT_SHADING_PHONG          32824
 #define ID_LIGHT_SHADING_NOSHADING      32825
+#define ID_BUTTON32826                  32826
+#define ID_VIEW_BACKGROUNDIMAGE         32827
+#define ID_BACKGROUNDIMAGE_LOAD         32828
+#define ID_BACKGROUNDIMAGE_RESET        32829
+#define ID_BACKGROUNDIMAGE_VIEW         32830
+#define ID_VIEW_NORMAL                  32831
+#define ID_VIEW_STRECH                  32832
+#define ID_VIEW_REPEAT                  32833
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        139
-#define _APS_NEXT_COMMAND_VALUE         32826
+#define _APS_NEXT_COMMAND_VALUE         32834
 #define _APS_NEXT_CONTROL_VALUE         1043
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
