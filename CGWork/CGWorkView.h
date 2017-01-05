@@ -182,7 +182,7 @@ protected:
 	afx_msg void OnUpdateBackgroundImageViewStrech(CCmdUI* pCmdUI);
 	afx_msg void OnBackgroundImageViewRepeat();
 	afx_msg void OnUpdateBackgroundImageViewRepeat(CCmdUI* pCmdUI);
-
+	afx_msg void OnCreatePicture();
 
 
 	//}}AFX_MSG

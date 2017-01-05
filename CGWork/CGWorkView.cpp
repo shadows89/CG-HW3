@@ -109,6 +109,7 @@ typedef struct{
 
 CString _backgroundPngPath = "";
 int _backgroundImageState = 0;
+bool _createPicture = false;
 // Use this macro to display text messages in the status bar.
 #define STATUS_BAR_TEXT(str) (((CMainFrame*)GetParentFrame())->getStatusBar().SetWindowText(str))
 
@@ -189,7 +190,7 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_STRECH, OnUpdateBackgroundImageViewStrech)
 	ON_COMMAND(ID_VIEW_REPEAT, OnBackgroundImageViewRepeat)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_REPEAT, OnUpdateBackgroundImageViewRepeat)
-
+	ON_COMMAND(ID_CREATE_PICTURE, OnCreatePicture)
 
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -205,6 +206,11 @@ void auxSolidCone(GLdouble radius, GLdouble height) {
 
 /////////////////////////////////////////////////////////////////////////////
 // CCGWorkView construction/destruction
+
+void CCGWorkView::OnCreatePicture(){
+	_createPicture = true;
+	Invalidate();
+}
 
 void CCGWorkView::OnBackgroundImageViewNormal(){
 	if (_backgroundImageState != 0){
@@ -1450,6 +1456,7 @@ void CCGWorkView::drawBBox(Model* model){
 }
 
 
+
 void CCGWorkView::OnDraw(CDC* pDC)
 {
 	CCGWorkDoc* pDoc = GetDocument();
@@ -1471,12 +1478,268 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		firstDraw = 0;
 	}
 
+	
+	if (_createPicture){
+		_createPicture = false;
+		int tmp_w = global_w;
+		global_w /= 2;
+		int tmp_h = global_h;
+		global_h /= 2;
+		CCGWorkView::updatePipeline();
+
+		if (pixelOwner != NULL)
+			delete pixelOwner;
+
+
+
+		vec_bitmap = new std::vector<COLORREF>((w + 1)*(h + 1), backgroundColor);
+		pixelOwner = new std::vector<Model*>((w + 1)*(h + 1), NULL);
+		ZBuffer = new std::vector<Ztuple>((w + 1)*(h + 1), Ztuple(INT64_MIN, backgroundColor, NULL));
+		if (_backgroundPngPath != ""){
+			CStringA CStr(_backgroundPngPath);
+			PngWrapper png((const char *)CStr);
+			png.ReadPng();
+
+			int pngwidth = png.GetWidth();
+			int pngheight = png.GetHeight();
+
+			if (_backgroundImageState == 2){
+				//Repeat mode
+				for (int i = 0; i < h; i++){
+					for (int j = 0; j < w; j++){
+						int index = i*w + j;
+
+						/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+						int color = png.GetValue(j%pngwidth, i%pngheight);
+						COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+						//int index = i*factorH + j*global_w*factorW;
+
+
+
+						if (index < ZBuffer->size()){
+							(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+						}
+						else{
+							int jj = 3;
+						}
+					}
+				}
+			}
+			else if (_backgroundImageState == 1){
+				//Strech mode
+				double factorW = (double)pngwidth / global_w;
+				double factorH = (double)pngheight / global_h;
+
+
+				for (int i = 0; i < h; i++){
+					for (int j = 0; j < w; j++){
+						int index = i*w + j;
+
+						/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+						int color = png.GetValue(floor(j*factorW), floor(i*factorH));
+						COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+						//int index = i*factorH + j*global_w*factorW;
+
+						if (index < ZBuffer->size()){
+							(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+						}
+						else{
+							int jj = 3;
+						}
+					}
+				}
+			}
+			else{
+				for (int i = 0; i < h; i++){
+					for (int j = 0; j < w; j++){
+						if (i>pngheight || j>pngwidth){
+							continue;
+						}
+						int index = i*w + j;
+
+						/*int color = png.GetValue(floor(i*factorW), floor(j*factorH));*/
+						int color = png.GetValue(j, i);
+						COLORREF c = RGB(GET_B(color), GET_G(color), GET_R(color));
+						//int index = i*factorH + j*global_w*factorW;
+
+						if (index < ZBuffer->size()){
+							(*ZBuffer)[index] = Ztuple(INT64_MIN, c, NULL);
+						}
+						else{
+							int jj = 3;
+						}
+					}
+				}
+			}
+		}
+		if (models.getSize() != 0){
+			CG_Point* p1;
+			CG_Point* p2;
+			CG_Point* tmp;
+			vec4 vp = vec4::normalize(camera.transformation()[2]);
+			for (Model* model = models.first(); model != NULL; model = models.next()){
+				currentObejct = model;
+				if (colorNotChange)
+					modelColor = model->color;
+				CG_NormalList* polynormal = model->calculatedPolygonNormals;
+
+				/*if (model->polygons->size != model->calculatedPolygonNormals->size){
+					polynormal = model->polygonNormals;
+					}*/
+				CG_Point* dir = polynormal->first();
+				CG_Point* mid = model->polygonMids->first();
+
+				/*p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
+				p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
+
+				/*if (model->polygons->size != model->calculatedPolygonNormals->size){
+				polynormal = model->polygonNormals;
+				}*/
+
+
+
+				for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
+
+					pixelHashX.clear();
+					pixelHashY.clear();
+
+					pixelHashXPhong.clear();
+					pixelHashYPhong.clear();
+
+					vec4 currentMid = m_translate*m_rotate*model->position*(*mid);
+					currentPolyNormal = m_translate*m_rotate*model->position*(*dir);
+
+
+					/*if (m_bIsPerspective){
+						vp = camera.eye() - currentMid;
+						}*/
+
+					if (vp.dot(currentPolyNormal) < 0){
+						dir = polynormal->next();
+						mid = model->polygonMids->next();
+						continue;
+					}
+
+					p1 = polygon->first();
+					p2 = polygon->next();
+
+					p1Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()];
+					p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+
+					while (true){
+						vec4 p1Offset = m_pipeline*model->position*(*p1);
+						vec4 p2Offset = m_pipeline*model->position*(*p2);
+
+						line(p1Offset, p2Offset);
+						tmp = p2;
+						p2 = polygon->next();
+						p1 = tmp;
+
+						if (p2 == NULL){
+							p2 = polygon->first();
+							break;
+						}
+
+						p1Normal = p2Normal;
+						p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+					}
+
+					vec4 p1Offset = m_pipeline*model->position*(*p1);
+					vec4 p2Offset = m_pipeline*model->position*(*p2);
+
+					//p1Normal = p2Normal;
+					p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+
+					line(p1Offset, p2Offset);
+
+
+					if (BBox){
+						drawingBBox = true;
+						drawBBox(model);
+						drawingBBox = false;
+					}
+					dir = polynormal->next();
+					mid = model->polygonMids->next();
+
+				}
+				if (polygonNormals){
+					drawNormals = TRUE;
+					CG_NormalList* tmp = NULL;
+					if (polyGiven)
+						tmp = model->polygonNormals;
+					else
+						tmp = model->calculatedPolygonNormals;
+					for (CG_Point* dir = tmp->first(), *mid = model->polygonMids->first(); dir != NULL && mid != NULL;
+						dir = tmp->next(), mid = model->polygonMids->next()){
+						vec4 normal = (*mid + *dir);
+						normal[3] = 1;
+						normal = m_pipeline*model->position*normal;
+						vec4 screenPoint = m_pipeline*model->position*(*mid);
+						line(screenPoint, normal);
+					}
+					drawNormals = FALSE;
+				}
+				if (vertexNormals){
+					drawNormals = TRUE;
+					CG_NormalList* tmp;
+					if (vertexGiven)
+						tmp = model->vertexNormals;
+					else
+						tmp = model->calculatedVertexNormals;
+					for (CG_Point* point = model->vertices->first(), *direction = tmp->first();
+						point != NULL && direction != NULL;
+						point = model->vertices->next(), direction = tmp->next()){
+						vec4 normal = (*point + *direction);
+						normal[3] = 1;
+						normal = m_pipeline*model->position*normal;
+						vec4 screenPoint = m_pipeline*model->position*(*point);
+						vec4 sp2 = screenPoint + vec4::normalize(normal) * 10;
+						line(screenPoint, normal);
+					}
+					drawNormals = FALSE;
+				}
+			}
+		}
+		PngWrapper png("1.png", w, h);
+		bool res = png.InitWritePng();
+		if (res){
+			for (int x = 0; x <= w; x++){
+				for (int y = 0; y <= h; y++){
+					int color = std::get<1>((*ZBuffer)[x + y*w]);
+					COLORREF c = SET_RGB(GetBValue(color), GetGValue(color),  GetRValue(color));
+					png.SetValue(x,y, c);
+				}
+			}
+			png.WritePng();
+		}
+		else{
+			int j = 123;
+		}
+		/*CBitmap bitmap;
+		std::vector<COLORREF> tmp(*vec_bitmap);
+		bitmap.CreateBitmap(w, h, 1, 32, &tmp[0]);
+
+		
+
+		
+
+		dcMem.SelectObject(&bitmap);
+		pDC->TransparentBlt(0, 0, w, h, &dcMem, 0, 0, w, h, RGB(100, 100, 100));
+		bitmap.DeleteObject();
+		dcMem.DeleteDC();*/
+		delete vec_bitmap;
+		delete ZBuffer;
+
+		global_w = tmp_w;
+		global_h = tmp_h;
+	}
+
 	CCGWorkView::updatePipeline();
 
 	if (pixelOwner != NULL)
 		delete pixelOwner;
 
-	
+
 
 	vec_bitmap = new std::vector<COLORREF>((w + 1)*(h + 1), backgroundColor);
 	pixelOwner = new std::vector<Model*>((w + 1)*(h + 1), NULL);
@@ -1489,7 +1752,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		int pngwidth = png.GetWidth();
 		int pngheight = png.GetHeight();
 
-		if (_backgroundImageState==2){
+		if (_backgroundImageState == 2){
 			//Repeat mode
 			for (int i = 0; i < h; i++){
 				for (int j = 0; j < w; j++){
@@ -1511,7 +1774,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				}
 			}
 		}
-		else if(_backgroundImageState==1){
+		else if (_backgroundImageState == 1){
 			//Strech mode
 			double factorW = (double)pngwidth / global_w;
 			double factorH = (double)pngheight / global_h;
@@ -1565,41 +1828,41 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		vec4 vp = vec4::normalize(camera.transformation()[2]);
 		for (Model* model = models.first(); model != NULL; model = models.next()){
 			currentObejct = model;
-			if(colorNotChange)
+			if (colorNotChange)
 				modelColor = model->color;
 			CG_NormalList* polynormal = model->calculatedPolygonNormals;
-			
+
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
-				polynormal = model->polygonNormals;
+			polynormal = model->polygonNormals;
 			}*/
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
-			
+
 			/*p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
 			p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
-				polynormal = model->polygonNormals;
+			polynormal = model->polygonNormals;
 			}*/
 
 
-			
+
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
-				
+
 				pixelHashX.clear();
 				pixelHashY.clear();
 
 				pixelHashXPhong.clear();
 				pixelHashYPhong.clear();
-			
+
 				vec4 currentMid = m_translate*m_rotate*model->position*(*mid);
 				currentPolyNormal = m_translate*m_rotate*model->position*(*dir);
-				
-				
+
+
 				/*if (m_bIsPerspective){
-					vp = camera.eye() - currentMid;
+				vp = camera.eye() - currentMid;
 				}*/
-				
+
 				if (vp.dot(currentPolyNormal) < 0){
 					dir = polynormal->next();
 					mid = model->polygonMids->next();
@@ -1608,19 +1871,19 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 				p1 = polygon->first();
 				p2 = polygon->next();
-				
-				p1Normal =m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()];
+
+				p1Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()];
 				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
 
 				while (true){
 					vec4 p1Offset = m_pipeline*model->position*(*p1);
 					vec4 p2Offset = m_pipeline*model->position*(*p2);
-					
+
 					line(p1Offset, p2Offset);
 					tmp = p2;
 					p2 = polygon->next();
 					p1 = tmp;
-									
+
 					if (p2 == NULL){
 						p2 = polygon->first();
 						break;
@@ -1635,10 +1898,10 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 				//p1Normal = p2Normal;
 				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
-				
+
 				line(p1Offset, p2Offset);
 
-				
+
 				if (BBox){
 					drawingBBox = true;
 					drawBBox(model);
@@ -1655,7 +1918,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					tmp = model->polygonNormals;
 				else
 					tmp = model->calculatedPolygonNormals;
-				for (CG_Point* dir = tmp->first(),*mid = model->polygonMids->first(); dir != NULL && mid != NULL;
+				for (CG_Point* dir = tmp->first(), *mid = model->polygonMids->first(); dir != NULL && mid != NULL;
 					dir = tmp->next(), mid = model->polygonMids->next()){
 					vec4 normal = (*mid + *dir);
 					normal[3] = 1;
@@ -1672,9 +1935,9 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					tmp = model->vertexNormals;
 				else
 					tmp = model->calculatedVertexNormals;
-				for (CG_Point* point = model->vertices->first(),*direction = tmp->first();
-							point != NULL && direction != NULL;
-							point = model->vertices->next(), direction =tmp->next()){
+				for (CG_Point* point = model->vertices->first(), *direction = tmp->first();
+					point != NULL && direction != NULL;
+					point = model->vertices->next(), direction = tmp->next()){
 					vec4 normal = (*point + *direction);
 					normal[3] = 1;
 					normal = m_pipeline*model->position*normal;
