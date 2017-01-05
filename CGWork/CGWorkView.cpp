@@ -398,11 +398,11 @@ void CCGWorkView::resetTransformations(){
 	double F = minZ, N = maxZ;
 
 	/*camera.lookAt(vec4((R + L) / 2, (T + B) / 2, N + 1, 1), vec4((R + L) / 2, (T + B) / 2, N,1), vec4(0, -1, 0));*/
-	//camera.lookAt(vec4(0.5, 0.5, 50, 1), vec4(0, 0, 0, 1), vec4(0, -1, 0, 1));
+	camera.lookAt(vec4(0, 0, 5, 1), vec4(0, 0, 0, 1), vec4(0, -1, 0, 1));
 	/*camera.lookAt(vec4(minX, maxY, 3, 1), vec4(minX,maxY, 0, 0), vec4(0, -1, 0, 1));
 	*/
 	/*camera.lookAt(vec4(0.5, 0.5, 0, 1.0), vec4(0.5, 0.5, -0.1, 1.0), vec4(0, -1, 0, 1.0));*/
-	camera.lookAt(vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, maxZ,0), vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, -0.1, 1.0), vec4(0, -1, 0, 1.0));
+	//camera.lookAt(vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, maxZ,0), vec4((minX + maxX) / 2.0, (minY + maxY) / 2.0, -0.1, 1.0), vec4(0, -1, 0, 1.0));
 	m_scale = mat4::scale(1.0);
 
 	m_translate = mat4::translate(vec4(0, 0, 0));
@@ -596,7 +596,7 @@ void CCGWorkView::line(CG_Point p1, CG_Point p2){
 			if (m_nLightShading == ID_LIGHT_SHADING_GOURAUD)
 				line2(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
 			if (m_nLightShading == ID_LIGHT_SHADING_PHONG)
-				line1(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
+				line3(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
 			if (m_nLightShading == ID_LIGHT_SHADING_NOSHADING)
 				line2(p1[0] / p1[3], p1[1] / p1[3], p1[2] / p1[3], p2[0] / p2[3], p2[1] / p2[3], p2[2] / p2[3]);
 		}
@@ -1402,7 +1402,7 @@ void CCGWorkView::updatePipeline(){
 		//p[2][3] = - (abs(N*F)) / (abs(F) - abs(N));
 		//p[3][2] = 1/(abs(F));
 
-		p[3][2] = 1 / (abs(F));
+		p[3][2] = -1 / (abs(F));
 		//p[3][3]=0;
 		m_pipeline = invCamera *m_translate*m_scale*m_rotate;
 		m_pipeline = p*m_pipeline;
@@ -1596,11 +1596,11 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				currentPolyNormal = m_translate*m_rotate*model->position*(*dir);
 				
 				
-				if (m_bIsPerspective){
+				/*if (m_bIsPerspective){
 					vp = camera.eye() - currentMid;
-				}
+				}*/
 				
-				if (vp.dot(currentMid - currentPolyNormal) > 0){
+				if (vp.dot(currentPolyNormal) < 0){
 					dir = polynormal->next();
 					mid = model->polygonMids->next();
 					continue;
