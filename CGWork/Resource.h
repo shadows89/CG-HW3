@@ -83,7 +83,6 @@
 #define ID_POLYFILL                     32823
 #define ID_LIGHT_SHADING_PHONG          32824
 #define ID_LIGHT_SHADING_NOSHADING      32825
-#define ID_BUTTON32826                  32826
 #define ID_INVERSE                      32826
 #define ID_VIEW_BACKGROUNDIMAGE         32827
 #define ID_BACKGROUNDIMAGE_LOAD         32828

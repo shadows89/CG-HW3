@@ -183,6 +183,7 @@ protected:
 	afx_msg void OnUpdateBackgroundImageViewStrech(CCmdUI* pCmdUI);
 	afx_msg void OnBackgroundImageViewRepeat();
 	afx_msg void OnUpdateBackgroundImageViewRepeat(CCmdUI* pCmdUI);
+	
 	afx_msg void OnNormalInverse();
 	afx_msg void OnCreatePicture();
 	afx_msg void OnBackfaceCulling();
@@ -200,8 +201,8 @@ protected:
 	afx_msg void OnUpdateChooseVertexNormal(CCmdUI* pCmdUI);
 	afx_msg void OnChooseGivenVertexNormal();
 	afx_msg void OnUpdateChooseGivenVertexNormal(CCmdUI* pCmdUI);
-
 	afx_msg void OnSilhoutteColor();
+
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

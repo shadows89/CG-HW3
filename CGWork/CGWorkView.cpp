@@ -224,6 +224,7 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_SILHOUETTE, OnUpdateSilhouette)
 	ON_COMMAND(ID_RENDER_RENDEROPTIONS, OnRenderOptions)
 	ON_COMMAND(ID_COLOR_SILHOUTTE,OnSilhoutteColor)
+
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -238,6 +239,11 @@ void auxSolidCone(GLdouble radius, GLdouble height) {
 
 /////////////////////////////////////////////////////////////////////////////
 // CCGWorkView construction/destruction
+
+void CCGWorkView::OnCreatePicture(){
+	_createPicture = true;
+	Invalidate();
+}
 
 void CCGWorkView::OnBackgroundImageViewNormal(){
 	if (_backgroundImageState != 0){
@@ -1511,6 +1517,7 @@ bool CCGWorkView::isSilhouette(CG_Point p1, CG_Point p2){
 }
 
 
+
 void CCGWorkView::OnDraw(CDC* pDC)
 {
 	CCGWorkDoc* pDoc = GetDocument();
@@ -1527,6 +1534,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	int h = r.Height();
 
 	int tmp_w, tmp_h;
+	double tmp_aspectRatio;
 
 	if (firstDraw){
 		resetTransformations();
@@ -1535,12 +1543,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	}
 
 	if (_createPicture){
+		tmp_aspectRatio = m_AspectRatio;
 		tmp_w = w;
 		tmp_h = h;
 		global_w = pngPicWidth;
 		global_h = pngPicheight;
 		w = pngPicWidth;
 		h = pngPicheight;
+		m_AspectRatio = (GLdouble)pngPicWidth / (GLdouble)pngPicheight;
 	}
 
 	CCGWorkView::updatePipeline();
@@ -1548,7 +1558,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	if (pixelOwner != NULL)
 		delete pixelOwner;
 
-	
+
 
 	vec_bitmap = new std::vector<COLORREF>((w + 1)*(h + 1), backgroundColor);
 	pixelOwner = new std::vector<Model*>((w + 1)*(h + 1), NULL);
@@ -1561,7 +1571,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		int pngwidth = png.GetWidth();
 		int pngheight = png.GetHeight();
 
-		if (_backgroundImageState==2){
+		if (_backgroundImageState == 2){
 			//Repeat mode
 			for (int i = 0; i < h; i++){
 				for (int j = 0; j < w; j++){
@@ -1583,7 +1593,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				}
 			}
 		}
-		else if(_backgroundImageState==1){
+		else if (_backgroundImageState == 1){
 			//Strech mode
 			double factorW = (double)pngwidth / global_w;
 			double factorH = (double)pngheight / global_h;
@@ -1610,7 +1620,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		else{
 			for (int i = 0; i < h; i++){
 				for (int j = 0; j < w; j++){
-					if (i>pngheight || j>pngwidth){
+					if (i > pngheight || j > pngwidth){
 						continue;
 					}
 					int index = i*w + j;
@@ -1637,7 +1647,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		vec4 vp = vec4::normalize(camera.transformation()[2]);
 		for (Model* model = models.first(); model != NULL; model = models.next()){
 			currentObejct = model;
-			if(colorNotChange)
+			if (colorNotChange)
 				modelColor = model->color;
 			CG_NormalList* polynormal;
 
@@ -1647,40 +1657,39 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			else {
 				polynormal = model->calculatedPolygonNormals;
 			}
-			
+
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
-				polynormal = model->polygonNormals;
+			polynormal = model->polygonNormals;
 			}*/
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
-			currentPolyMid = *mid;
+
 			/*p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
 			p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
-				polynormal = model->polygonNormals;
+			polynormal = model->polygonNormals;
 			}*/
 
 
-			
+
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
-				
 				//pixelHashX.clear();
 				pixelHashY.clear();
-
 				//pixelHashXPhong.clear();
 				pixelHashYPhong.clear();
-			
+
 				vec4 currentMid = m_translate*m_rotate*model->position*(*mid);
-				currentPolyNormal = m_translate*m_rotate*model->position*(*dir);
-				
-				
+				currentPolyNormal = m_translate*m_rotate*model->position*(*dir) * inverse;
+
+
 				/*if (m_bIsPerspective){
 					vp = currentMid - camera.eye();
-				}*/
-				
+					}*/
+
+
 				if (backfaceCulling){
-					if (vp.dot(currentPolyNormal*inverse) < 0){
+					if (vp.dot(currentPolyNormal) < 0){
 						dir = polynormal->next();
 						mid = model->polygonMids->next();
 						continue;
@@ -1689,7 +1698,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 				p1 = polygon->first();
 				p2 = polygon->next();
-				
+
 				if (calcByGivenVertexNormals){
 					p1Normal = m_translate*m_rotate*model->position*model->givenVertexNormalHash[p1->toString()] * inverse;
 					p2Normal = m_translate*m_rotate*model->position*model->givenVertexNormalHash[p2->toString()] * inverse;
@@ -1702,14 +1711,14 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				while (true){
 					vec4 p1Offset = m_pipeline*model->position*(*p1);
 					vec4 p2Offset = m_pipeline*model->position*(*p2);
-					
+
 					line(p1Offset, p2Offset);
-					
+
 
 					tmp = p2;
 					p2 = polygon->next();
 					p1 = tmp;
-									
+
 					if (p2 == NULL){
 						p2 = polygon->first();
 						break;
@@ -1727,9 +1736,9 @@ void CCGWorkView::OnDraw(CDC* pDC)
 
 				//p1Normal = p2Normal;
 				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()] * inverse;
-				
+
 				line(p1Offset, p2Offset);
-				
+
 				dir = polynormal->next();
 				mid = model->polygonMids->next();
 				if (mid != NULL)
@@ -1779,7 +1788,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					tmp = model->polygonNormals;
 				else
 					tmp = model->calculatedPolygonNormals;
-				for (CG_Point* dir = tmp->first(),*mid = model->polygonMids->first(); dir != NULL && mid != NULL;
+				for (CG_Point* dir = tmp->first(), *mid = model->polygonMids->first(); dir != NULL && mid != NULL;
 					dir = tmp->next(), mid = model->polygonMids->next()){
 					vec4 normal = (*mid + *dir) * inverse;
 					normal[3] = 1;
@@ -1796,9 +1805,9 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					tmp = model->vertexNormals;
 				else
 					tmp = model->calculatedVertexNormals;
-				for (CG_Point* point = model->vertices->first(),*direction = tmp->first();
-							point != NULL && direction != NULL;
-							point = model->vertices->next(), direction =tmp->next()){
+				for (CG_Point* point = model->vertices->first(), *direction = tmp->first();
+					point != NULL && direction != NULL;
+					point = model->vertices->next(), direction = tmp->next()){
 					vec4 normal = (*point + *direction) * inverse;
 					normal[3] = 1;
 					normal = m_pipeline*model->position*normal;
@@ -1815,7 +1824,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			(*vec_bitmap)[x + y*w] = std::get<1>((*ZBuffer)[x + y*w]);
 		}
 	}
-	
+
 	if (_createPicture){
 		char* fileName = new char[pngFileName.GetLength() + 1];
 		for (int i = 0; i < pngFileName.GetLength(); i++){
@@ -1838,6 +1847,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		}
 		global_w = tmp_w;
 		global_h = tmp_h;
+		m_AspectRatio = tmp_aspectRatio;
 		_createPicture = false;
 	}
 	else{
@@ -1853,7 +1863,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	delete ZBuffer;
 
 }
-
 
 /*void CCGWorkView::scanPolyFill(){
 	fillingPoly = true;
@@ -1881,8 +1890,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 /////////////////////////////////////////////////////////////////////////////
 // CCGWorkView CGWork Finishing and clearing...
 
-void CCGWorkView::OnDestroy()
-{
+void CCGWorkView::OnDestroy(){
 	CView::OnDestroy();
 
 	// delete the DC
@@ -2561,11 +2569,6 @@ void CCGWorkView::OnPolyFillCheck(CCmdUI* pCmdUI){
 void CCGWorkView::OnNormalInverse(){
 	inverse *= (-1);
 	Invalidate();
-}
-
-void CCGWorkView::OnCreatePicture(){
-	_createPicture = true;
-	Invalidate();	
 }
 
 void CCGWorkView::OnBackfaceCulling(){
