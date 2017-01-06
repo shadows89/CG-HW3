@@ -202,6 +202,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
     <ClCompile Include="MaterialDlg.cpp" />
+    <ClCompile Include="PNGDialog.cpp" />
     <ClCompile Include="PngWrapper.cpp" />
     <ClCompile Include="SensetivityDialog.cpp" />
     <ClCompile Include="StdAfx.cpp">
@@ -231,6 +232,7 @@
     <ClInclude Include="MainFrm.h" />
     <ClInclude Include="MaterialDlg.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="PNGDialog.h" />
     <ClInclude Include="PngWrapper.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SensetivityDialog.h" />

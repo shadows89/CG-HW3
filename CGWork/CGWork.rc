@@ -41,7 +41,7 @@ IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
 // Toolbar
 //
 
-IDR_MAINFRAME TOOLBAR 16, 16
+IDR_MAINFRAME TOOLBAR 18, 17
 BEGIN
     BUTTON      ID_FILE_LOAD
     SEPARATOR
@@ -62,7 +62,10 @@ BEGIN
     BUTTON      ID_EVERYTHING
     BUTTON      ID_SINGLE
     BUTTON      ID_POLYFILL
-    BUTTON      ID_BUTTON32826
+    BUTTON      ID_INVERSE
+    BUTTON      ID_BACKFACE_CULLING
+    BUTTON      ID_CREATE_PICTURE
+    BUTTON      ID_SILHOUETTE
 END
 
 
@@ -105,6 +108,7 @@ BEGIN
             MENUITEM "Model",                       ID_COLOR_MODEL
             MENUITEM "Background",                  ID_COLOR_BACKGROUND
             MENUITEM "Normals",                     ID_COLOR_NORMALS
+            MENUITEM "Silhouette",                  ID_COLOR_SILHOUTTE
         END
         MENUITEM SEPARATOR
         MENUITEM "Settings",                    ID_VIEW_SETTINGS
@@ -148,6 +152,24 @@ BEGIN
             MENUITEM "No Shading",                  ID_LIGHT_SHADING_NOSHADING
         END
         MENUITEM "&Parameters...",              ID_LIGHT_CONSTANTS
+        MENUITEM "Material",                    ID_LIGHT_MATERIAL
+    END
+    POPUP "Render"
+    BEGIN
+        MENUITEM "Render Options",              ID_RENDER_RENDEROPTIONS
+    END
+    POPUP "Normals"
+    BEGIN
+        POPUP "Polygon"
+        BEGIN
+            MENUITEM "Given",                       ID_POLYGON_GIVEN32841
+            MENUITEM "Calculated",                  ID_POLYGON_CALCULATED32842
+        END
+        POPUP "Vertex"
+        BEGIN
+            MENUITEM "Given",                       ID_VERTEX_GIVEN32844
+            MENUITEM "Calculated",                  ID_VERTEX_CALCULATED32845
+        END
     END
     POPUP "&Help"
     BEGIN
@@ -285,6 +307,20 @@ BEGIN
     PUSHBUTTON      "OK",IDC_BUTTON1,102,138,50,14
 END
 
+IDD_DIALOG1 DIALOGEX 0, 0, 183, 155
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "PNG Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,65,121,50,14
+    LTEXT           "Png Picture Width:",IDC_STATIC,21,22,64,11
+    LTEXT           "Png Picture Height:",IDC_STATIC,21,47,64,11
+    LTEXT           "Png Picture File Name:",IDC_STATIC,20,74,74,11
+    EDITTEXT        IDC_EDIT1,93,20,54,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT2,93,45,54,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT3,20,87,138,14,ES_AUTOHSCROLL
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -362,6 +398,14 @@ BEGIN
         RIGHTMARGIN, 254
         TOPMARGIN, 7
         BOTTOMMARGIN, 168
+    END
+
+    IDD_DIALOG1, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 176
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 148
     END
 END
 #endif    // APSTUDIO_INVOKED

@@ -11,6 +11,7 @@ using std::cout;
 using std::endl;
 #include "MaterialDlg.h"
 #include "LightDialog.h"
+#include "PNGDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,6 +59,7 @@ Model* changingObejct = NULL;
 int currentZ;
 vec4 currentPolyNormal = vec4(0, 0, 0);
 vec4 globalNormal;
+vec4 currentPolyMid;
 vec4 phongNormal;
 double polyMaxX = INT64_MIN, polyMinX = INT64_MAX , polyMaxY = INT64_MIN, polyMinY = INT64_MAX;
 int global_h;
@@ -78,6 +80,7 @@ int colorNotChange = 1;
 COLORREF modelColor;
 COLORREF backgroundColor = RGB(255, 255, 255);
 COLORREF normalColor = RGB(0, 0, 255);
+COLORREF silhouetteColor = RGB(46,246,15);
 COLORREF globalCalculatedColor;
 
 vec4 p1Normal;
@@ -98,17 +101,30 @@ bool polyFill = false;
 bool fillingPoly = false;
 bool onFrame = true;
 
+bool calcByGivenPolyNormals = true;
+bool calcByGivenVertexNormals = true;
+
+bool silhouette = false;
+bool drawingSilhouette = false;
+
+int pngPicWidth;
+int pngPicheight;
+CString pngFileName = "CG_render.png";
 double F = - 50;
 
-typedef struct{
+int inverse = 1;
+
+/*typedef struct{
 	CG_Point point;
 	CG_Point normal;
 	COLORREF color;
-}PointData;
+}PointData;*/
 
 
 CString _backgroundPngPath = "";
 int _backgroundImageState = 0;
+bool _createPicture = false;
+bool backfaceCulling = false;
 // Use this macro to display text messages in the status bar.
 #define STATUS_BAR_TEXT(str) (((CMainFrame*)GetParentFrame())->getStatusBar().SetWindowText(str))
 
@@ -189,8 +205,25 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_STRECH, OnUpdateBackgroundImageViewStrech)
 	ON_COMMAND(ID_VIEW_REPEAT, OnBackgroundImageViewRepeat)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_REPEAT, OnUpdateBackgroundImageViewRepeat)
-
-
+	ON_COMMAND(ID_INVERSE, OnNormalInverse)
+	ON_COMMAND(ID_CREATE_PICTURE, OnCreatePicture)
+	ON_COMMAND(ID_BACKFACE_CULLING, OnBackfaceCulling)
+	ON_UPDATE_COMMAND_UI(ID_BACKFACE_CULLING, OnUpdateBackfaceCulling)
+	ON_COMMAND(ID_LIGHT_MATERIAL, OnMaterialConstants)
+	ON_COMMAND(ID_SILHOUETTE, OnSilhouette)
+	ON_UPDATE_COMMAND_UI(ID_SILHOUETTE, OnUpdateSilhouette)
+	ON_COMMAND(ID_POLYGON_CALCULATED32842, OnChoosePolygonNormal)
+	ON_UPDATE_COMMAND_UI(ID_POLYGON_CALCULATED32842, OnUpdateChoosePolygonNormal)
+	ON_COMMAND(ID_POLYGON_GIVEN32841, OnChooseGivenPlygonNormal)
+	ON_UPDATE_COMMAND_UI(ID_POLYGON_GIVEN32841, OnCUpdatehooseGivenPolygonNormal)
+	ON_COMMAND(ID_VERTEX_CALCULATED32845, OnChooseVertexNormal)
+	ON_UPDATE_COMMAND_UI(ID_VERTEX_CALCULATED32845, OnUpdateChooseVertexNormal)
+	ON_COMMAND(ID_VERTEX_GIVEN32844, OnChooseGivenVertexNormal)
+	ON_UPDATE_COMMAND_UI(ID_VERTEX_GIVEN32844, OnUpdateChooseGivenVertexNormal)
+	ON_COMMAND(ID_SILHOUETTE, OnSilhouette)
+	ON_UPDATE_COMMAND_UI(ID_SILHOUETTE, OnUpdateSilhouette)
+	ON_COMMAND(ID_RENDER_RENDEROPTIONS, OnRenderOptions)
+	ON_COMMAND(ID_COLOR_SILHOUTTE,OnSilhoutteColor)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -387,7 +420,8 @@ void CCGWorkView::resetTransformations(){
 
 	global_h = h;
 	global_w = w;
-
+	pngPicheight = h;
+	pngPicWidth = w;
 	/*if (firstDraw){
 		camera.lookAt(vec4(0,0, 0), vec4(0,0, -1), vec4(0, -1, 0));
 		m_scale = mat4::scale(1/max);
@@ -501,7 +535,7 @@ COLORREF CCGWorkView::clacColor(int x, int y){
 			double IpG = m_lights[i].colorG;
 			double IpB = m_lights[i].colorB;
 			vec4 L;
-			vec4 V = vec4::normalize(vec4(global_w-x,global_h-y,-z));
+			vec4 V = vec4::normalize(camera.eye());
 			double N_L;
 			double R_V_n;
 				
@@ -560,8 +594,11 @@ COLORREF CCGWorkView::clacColor(int x, int y){
 
 void  CCGWorkView::plotPixel(int x, int y){
 	if (x >= 0 && x <= global_w && y >= 0 && y <= global_h){
-		if (std::get<0>((*ZBuffer)[x + y*global_w]) < currentZ){
-			if (drawNormals)
+		if (std::get<0>((*ZBuffer)[x + y*global_w]) <= currentZ){
+			if (drawingSilhouette){
+				(*ZBuffer)[x + y*global_w] = Ztuple(currentZ, silhouetteColor, currentObejct);
+			}
+			else if (drawNormals)
 				(*ZBuffer)[x + y*global_w] = Ztuple(currentZ, normalColor, currentObejct);
 			else{
 				if (polyFill){
@@ -624,7 +661,7 @@ void CCGWorkView::line(CG_Point p1, CG_Point p2){
 
 //TODO
 void CCGWorkView::hashPixelPhong(int x, int y, int z){
-	if (pixelHashXPhong.count(x) == 0){
+	/*if (pixelHashXPhong.count(x) == 0){
 		PhongTuple newPhongTuple(CG_Point(x, y, z, 1), phongNormal);
 		pixelHashXPhong.insert({ x, newPhongTuple });
 	}
@@ -637,7 +674,7 @@ void CCGWorkView::hashPixelPhong(int x, int y, int z){
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
 
-	}
+	}*/
 
 	if (pixelHashYPhong.count(y) == 0){
 		PhongTuple newPhongTuple(CG_Point(x, y, z, 1), phongNormal);
@@ -656,7 +693,7 @@ void CCGWorkView::hashPixelPhong(int x, int y, int z){
 }
 
 void CCGWorkView::hashPixel(int x, int y, int z){
-	if (pixelHashX.count(x) == 0){
+	/*if (pixelHashX.count(x) == 0){
 		hashTuple newHashTuple(CG_Point(x, y, z, 1), globalCalculatedColor);
 			pixelHashX.insert({ x, newHashTuple });
 	}
@@ -668,7 +705,7 @@ void CCGWorkView::hashPixel(int x, int y, int z){
 		line(std::get<0>(tmp), CG_Point(x, y, z, 1));
 		fillingPoly = false;
 	}
-
+	*/
 	if (pixelHashY.count(y) == 0){
 		hashTuple newHashTuple(CG_Point(x, y, z, 1), globalCalculatedColor);
 		pixelHashY.insert({ y, newHashTuple });
@@ -742,7 +779,7 @@ void CCGWorkView::line3(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixelPhong(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -765,7 +802,7 @@ void CCGWorkView::line3(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixelPhong(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -788,7 +825,7 @@ void CCGWorkView::line3(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixelPhong(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -807,7 +844,7 @@ void CCGWorkView::line3(int x1, int y1, double z1, int x2, int y2, double z2){
 	currentZ = z;
 	updateGlobaPhongNormal(normal_1, normal_2, x, y, x1, y1, z1, dist);
 	plotPixel(x, y);
-	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 		hashPixel(x, y, z);
 	}
 }
@@ -855,7 +892,7 @@ void CCGWorkView::line2(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -878,7 +915,7 @@ void CCGWorkView::line2(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -901,7 +938,7 @@ void CCGWorkView::line2(int x1, int y1, double z1, int x2, int y2, double z2){
 			currentZ = z;
 			updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -920,7 +957,7 @@ void CCGWorkView::line2(int x1, int y1, double z1, int x2, int y2, double z2){
 	currentZ = z;
 	updateGlobalColor(p1Color, p2Color, x, y, x1, y1, z1, dist);
 	plotPixel(x, y);
-	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 		hashPixel(x, y, z);
 	}
 }
@@ -951,7 +988,7 @@ void CCGWorkView::line1(int x1, int y1, double z1, int x2, int y2, double z2){
 		for (i = 0; i < l; i++) {
 			currentZ = z;
 			plotPixel(x, y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -973,7 +1010,7 @@ void CCGWorkView::line1(int x1, int y1, double z1, int x2, int y2, double z2){
 		for (i = 0; i < m; i++) {
 			currentZ = z;
 			plotPixel(x,y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -995,7 +1032,7 @@ void CCGWorkView::line1(int x1, int y1, double z1, int x2, int y2, double z2){
 		for (i = 0; i < n; i++) {
 			currentZ = z;
 			plotPixel(x,y);
-			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+			if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 				hashPixel(x, y, z);
 			}
 			if (err_1 > 0) {
@@ -1013,7 +1050,7 @@ void CCGWorkView::line1(int x1, int y1, double z1, int x2, int y2, double z2){
 	}
 	currentZ = z;
 	plotPixel(x, y);
-	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox){
+	if (!fillingPoly && polyFill && !drawNormals && !drawingBBox && !drawingSilhouette){
 		hashPixel(x, y, z);
 	}
 	
@@ -1449,6 +1486,30 @@ void CCGWorkView::drawBBox(Model* model){
 
 }
 
+bool CCGWorkView::isSilhouette(CG_Point p1, CG_Point p2){
+	std::string edge = p1.toString() + p2.toString();
+	CG_NormalList* normalList = currentObejct->edgeCalculatedPolygonNormalHash[edge];
+	if (normalList == NULL){
+		edge = p2.toString() + p1.toString();
+		normalList = currentObejct->edgeCalculatedPolygonNormalHash[edge];
+	}
+	bool foundBackFace = false, foundFrontFace = false;
+	vec4 vp = vec4::normalize(camera.transformation()[2]);
+	vec4 translatedNormal;
+	for (vec4* normal = normalList->first(); normal != NULL; normal = normalList->next()){
+		translatedNormal = m_translate*m_rotate*currentObejct->position*(*normal);
+		
+		if (vp.dot(translatedNormal) < 0)
+			foundBackFace = true;
+		else
+			foundFrontFace = true;
+
+		if (foundBackFace && foundFrontFace)
+			return true;
+	}
+	return false;
+}
+
 
 void CCGWorkView::OnDraw(CDC* pDC)
 {
@@ -1465,10 +1526,21 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	int w = r.Width();
 	int h = r.Height();
 
+	int tmp_w, tmp_h;
+
 	if (firstDraw){
 		resetTransformations();
 		m_rotate = mat4::rotate(0, 0, 0);
 		firstDraw = 0;
+	}
+
+	if (_createPicture){
+		tmp_w = w;
+		tmp_h = h;
+		global_w = pngPicWidth;
+		global_h = pngPicheight;
+		w = pngPicWidth;
+		h = pngPicheight;
 	}
 
 	CCGWorkView::updatePipeline();
@@ -1567,14 +1639,21 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			currentObejct = model;
 			if(colorNotChange)
 				modelColor = model->color;
-			CG_NormalList* polynormal = model->calculatedPolygonNormals;
+			CG_NormalList* polynormal;
+
+			if (calcByGivenPolyNormals){
+				polynormal = model->polygonNormals;
+			}
+			else {
+				polynormal = model->calculatedPolygonNormals;
+			}
 			
 			/*if (model->polygons->size != model->calculatedPolygonNormals->size){
 				polynormal = model->polygonNormals;
 			}*/
 			CG_Point* dir = polynormal->first();
 			CG_Point* mid = model->polygonMids->first();
-			
+			currentPolyMid = *mid;
 			/*p1Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->first());
 			p2Normal = m_translate*m_rotate*model->position*(*model->calculatedVertexNormals->next());
 
@@ -1586,10 +1665,10 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			
 			for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
 				
-				pixelHashX.clear();
+				//pixelHashX.clear();
 				pixelHashY.clear();
 
-				pixelHashXPhong.clear();
+				//pixelHashXPhong.clear();
 				pixelHashYPhong.clear();
 			
 				vec4 currentMid = m_translate*m_rotate*model->position*(*mid);
@@ -1597,26 +1676,36 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				
 				
 				/*if (m_bIsPerspective){
-					vp = camera.eye() - currentMid;
+					vp = currentMid - camera.eye();
 				}*/
 				
-				if (vp.dot(currentPolyNormal) < 0){
-					dir = polynormal->next();
-					mid = model->polygonMids->next();
-					continue;
+				if (backfaceCulling){
+					if (vp.dot(currentPolyNormal*inverse) < 0){
+						dir = polynormal->next();
+						mid = model->polygonMids->next();
+						continue;
+					}
 				}
 
 				p1 = polygon->first();
 				p2 = polygon->next();
 				
-				p1Normal =m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()];
-				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+				if (calcByGivenVertexNormals){
+					p1Normal = m_translate*m_rotate*model->position*model->givenVertexNormalHash[p1->toString()] * inverse;
+					p2Normal = m_translate*m_rotate*model->position*model->givenVertexNormalHash[p2->toString()] * inverse;
+				}
+				else{
+					p1Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p1->toString()] * inverse;
+					p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()] * inverse;
+				}
 
 				while (true){
 					vec4 p1Offset = m_pipeline*model->position*(*p1);
 					vec4 p2Offset = m_pipeline*model->position*(*p2);
 					
 					line(p1Offset, p2Offset);
+					
+
 					tmp = p2;
 					p2 = polygon->next();
 					p1 = tmp;
@@ -1627,26 +1716,61 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					}
 
 					p1Normal = p2Normal;
-					p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+					if (calcByGivenVertexNormals)
+						p2Normal = m_translate*m_rotate*model->position*model->givenVertexNormalHash[p2->toString()] * inverse;
+					else
+						p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()] * inverse;
 				}
 
 				vec4 p1Offset = m_pipeline*model->position*(*p1);
 				vec4 p2Offset = m_pipeline*model->position*(*p2);
 
 				//p1Normal = p2Normal;
-				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()];
+				p2Normal = m_translate*m_rotate*model->position*model->calculatedVertexNormalHash[p2->toString()] * inverse;
 				
 				line(p1Offset, p2Offset);
-
 				
-				if (BBox){
-					drawingBBox = true;
-					drawBBox(model);
-					drawingBBox = false;
-				}
 				dir = polynormal->next();
 				mid = model->polygonMids->next();
+				if (mid != NULL)
+					currentPolyMid = *mid;
+			}
 
+			if (BBox){
+				drawingBBox = true;
+				drawBBox(model);
+				drawingBBox = false;
+			}
+
+			if (silhouette){
+				for (CG_Polygon* polygon = model->polygons->first(); polygon != NULL; polygon = model->polygons->next()){
+					p1 = polygon->first();
+					p2 = polygon->next();
+					while (true){
+						vec4 p1Offset = m_pipeline*model->position*(*p1);
+						vec4 p2Offset = m_pipeline*model->position*(*p2);
+						if (isSilhouette(*p1, *p2)){
+							drawingSilhouette = true;
+							line(p1Offset, p2Offset);
+							drawingSilhouette = false;
+						}
+						tmp = p2;
+						p2 = polygon->next();
+						p1 = tmp;
+
+						if (p2 == NULL){
+							p2 = polygon->first();
+							break;
+						}
+					}
+					vec4 p1Offset = m_pipeline*model->position*(*p1);
+					vec4 p2Offset = m_pipeline*model->position*(*p2);
+					if (isSilhouette(*p1, *p2)){
+						drawingSilhouette = true;
+						line(p1Offset, p2Offset);
+						drawingSilhouette = false;
+					}
+				}
 			}
 			if (polygonNormals){
 				drawNormals = TRUE;
@@ -1657,7 +1781,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 					tmp = model->calculatedPolygonNormals;
 				for (CG_Point* dir = tmp->first(),*mid = model->polygonMids->first(); dir != NULL && mid != NULL;
 					dir = tmp->next(), mid = model->polygonMids->next()){
-					vec4 normal = (*mid + *dir);
+					vec4 normal = (*mid + *dir) * inverse;
 					normal[3] = 1;
 					normal = m_pipeline*model->position*normal;
 					vec4 screenPoint = m_pipeline*model->position*(*mid);
@@ -1675,7 +1799,7 @@ void CCGWorkView::OnDraw(CDC* pDC)
 				for (CG_Point* point = model->vertices->first(),*direction = tmp->first();
 							point != NULL && direction != NULL;
 							point = model->vertices->next(), direction =tmp->next()){
-					vec4 normal = (*point + *direction);
+					vec4 normal = (*point + *direction) * inverse;
 					normal[3] = 1;
 					normal = m_pipeline*model->position*normal;
 					vec4 screenPoint = m_pipeline*model->position*(*point);
@@ -1691,13 +1815,40 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			(*vec_bitmap)[x + y*w] = std::get<1>((*ZBuffer)[x + y*w]);
 		}
 	}
-	CBitmap bitmap;
-	std::vector<COLORREF> tmp(*vec_bitmap);
-	bitmap.CreateBitmap(w, h, 1, 32, &tmp[0]);
-	dcMem.SelectObject(&bitmap);
-	pDC->TransparentBlt(0, 0, w, h, &dcMem, 0, 0, w, h, RGB(100, 100, 100));
-	bitmap.DeleteObject();
-	dcMem.DeleteDC();
+	
+	if (_createPicture){
+		char* fileName = new char[pngFileName.GetLength() + 1];
+		for (int i = 0; i < pngFileName.GetLength(); i++){
+			fileName[i] = pngFileName[i];
+		}
+		PngWrapper png(fileName, w, h);
+		bool res = png.InitWritePng();
+		if (res){
+			for (int x = 0; x <= w; x++){
+				for (int y = 0; y <= h; y++){
+					int color = std::get<1>((*ZBuffer)[x + y*w]);
+					COLORREF c = SET_RGB(GetBValue(color), GetGValue(color), GetRValue(color));
+					png.SetValue(x, y, c);
+				}
+			}
+			png.WritePng();
+		}
+		else{
+			int j = 123;
+		}
+		global_w = tmp_w;
+		global_h = tmp_h;
+		_createPicture = false;
+	}
+	else{
+		CBitmap bitmap;
+		std::vector<COLORREF> tmp(*vec_bitmap);
+		bitmap.CreateBitmap(w, h, 1, 32, &tmp[0]);
+		dcMem.SelectObject(&bitmap);
+		pDC->TransparentBlt(0, 0, w, h, &dcMem, 0, 0, w, h, RGB(100, 100, 100));
+		bitmap.DeleteObject();
+		dcMem.DeleteDC();
+	}
 	delete vec_bitmap;
 	delete ZBuffer;
 
@@ -1966,6 +2117,26 @@ void CCGWorkView::OnLightConstants()
 	}
 	Invalidate();
 }
+
+void CCGWorkView::OnMaterialConstants()
+{
+	CMaterialDlg dlg;
+	
+	dlg.m_ambient = m_lMaterialAmbient;
+	dlg.m_diffuse = m_lMaterialDiffuse;
+	dlg.m_shininess = m_lMaterialSpecular;
+	dlg.m_specular = m_nMaterialCosineFactor;
+
+	if (dlg.DoModal() == IDOK)
+	{
+		m_lMaterialAmbient= dlg.m_ambient;
+		m_lMaterialDiffuse = dlg.m_diffuse;
+		m_lMaterialSpecular = dlg.m_shininess;
+		m_nMaterialCosineFactor = dlg.m_specular;
+	}
+	Invalidate();
+}
+
 
 void CCGWorkView::OnLButtonDown(UINT nFlags, CPoint point){
 	mousePressed = 1;
@@ -2253,6 +2424,15 @@ void CCGWorkView::OnNormalColorUpdate(){
 	Invalidate();
 }
 
+void CCGWorkView::OnSilhoutteColor(){
+	CColorDialog color;
+	color.DoModal();
+	COLORREF tmpColor = color.GetColor();
+	silhouetteColor = RGB(GetBValue(tmpColor), GetGValue(tmpColor), GetRValue(tmpColor));
+	Invalidate();
+}
+
+
 void CCGWorkView::OnNormalPolygonGiven(){
 	if (polygonNormals){
 		if (polyGiven){
@@ -2376,4 +2556,87 @@ void CCGWorkView::OnPolyFill(){
 
 void CCGWorkView::OnPolyFillCheck(CCmdUI* pCmdUI){
 	pCmdUI->SetCheck(polyFill);
+}
+
+void CCGWorkView::OnNormalInverse(){
+	inverse *= (-1);
+	Invalidate();
+}
+
+void CCGWorkView::OnCreatePicture(){
+	_createPicture = true;
+	Invalidate();	
+}
+
+void CCGWorkView::OnBackfaceCulling(){
+	backfaceCulling = !backfaceCulling;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateBackfaceCulling(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(backfaceCulling);
+}
+
+void CCGWorkView::OnSilhouette(){
+	silhouette = !silhouette;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateSilhouette(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(silhouette);
+}
+
+void CCGWorkView::OnRenderOptions(){
+	PNGDialog dlg;
+
+	dlg.png_width = pngPicWidth;
+	dlg.png_height = pngPicheight;
+	dlg.png_filename = pngFileName;
+
+	if (dlg.DoModal() == IDOK)
+	{
+		pngPicWidth = dlg.png_width;
+		pngPicheight = dlg.png_height;
+		pngFileName = dlg.png_filename;
+	}
+	Invalidate();
+
+}
+
+
+void CCGWorkView::OnChoosePolygonNormal(){
+	calcByGivenPolyNormals = false;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateChoosePolygonNormal(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(!calcByGivenPolyNormals);
+}
+
+void CCGWorkView::OnChooseGivenPlygonNormal(){
+	calcByGivenPolyNormals = true;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnCUpdatehooseGivenPolygonNormal(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(calcByGivenPolyNormals);
+}
+
+void CCGWorkView::OnChooseVertexNormal(){
+	calcByGivenVertexNormals = false;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateChooseVertexNormal(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(!calcByGivenVertexNormals);
+}
+
+void CCGWorkView::OnChooseGivenVertexNormal(){
+	calcByGivenVertexNormals = true;
+	Invalidate();
+}
+
+void CCGWorkView::OnUpdateChooseGivenVertexNormal(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(calcByGivenVertexNormals);
 }

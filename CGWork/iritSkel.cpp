@@ -232,7 +232,7 @@ bool CGSkelStoreData(IPObjectStruct *PObj)
 			model->vertices->add(v);
 			if (IP_HAS_NORMAL_VRTX(PVertex) != 0){
 				model->vertexNormals->add(new vec4(PVertex->Normal[0], PVertex->Normal[1], PVertex->Normal[2]));
-				//model->VertexNormalHash.insert({ *p, vec4(PVertex->Normal[0], PVertex->Normal[1], PVertex->Normal[2]) });
+				model->givenVertexNormalHash.insert({ (*p).toString(), vec4(PVertex->Normal[0], PVertex->Normal[1], PVertex->Normal[2]) });
 			}
 			PVertex = PVertex->Pnext;
 		} while (PVertex != PPolygon->PVertex && PVertex != NULL);

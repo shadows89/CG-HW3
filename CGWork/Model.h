@@ -15,6 +15,7 @@ typedef LinkedList<CG_Polygon*> CG_PolygonList;
 
 
 typedef std::unordered_map<std::string, vec4 > VertexNormalHash;
+typedef std::unordered_map<std::string, CG_NormalList* > EdgePloygonHash;
 
 
 class Model{
@@ -28,6 +29,9 @@ public:
 	CG_Polygon* polygonMids;
 	VertexNormalHash givenVertexNormalHash;
 	VertexNormalHash calculatedVertexNormalHash;
+
+	EdgePloygonHash edgeGivenPolygonNormalHash;
+	EdgePloygonHash edgeCalculatedPolygonNormalHash;
 	COLORREF color;
 
 	mat4 position;
@@ -48,6 +52,14 @@ public:
 	}
 
 	~Model(){
+		for (EdgePloygonHash::iterator iter = edgeCalculatedPolygonNormalHash.begin();
+					iter != edgeCalculatedPolygonNormalHash.end(); iter++){
+			delete std::get<1>(*iter);
+		}
+		for (EdgePloygonHash::iterator iter = edgeGivenPolygonNormalHash.begin();
+					iter != edgeGivenPolygonNormalHash.end(); iter++){
+			delete std::get<1>(*iter);
+		}
 		delete calculatedPolygonNormals;
 		delete calculatedVertexNormals;
 		delete polygons;
@@ -60,6 +72,7 @@ public:
 	void calculateNormals(){
 		calculatePolygonNormals();
 		calculateVertexNormals();
+		updateEdgePolygonHash();
 	}
 
 
@@ -131,6 +144,85 @@ public:
 				return TRUE;
 		}
 		return FALSE;
+	}
+
+	void updateEdgePolygonHash(){
+		vec4* calculatedPolyNormal = calculatedPolygonNormals->first();
+		vec4* givenPolyNormal = polygonNormals->first();
+		for (CG_Polygon* polygon = polygons->first(); polygon != NULL; polygon = polygons->next()){
+			CG_Point* p1 = polygon->first();
+			CG_Point* p2 = polygon->next();
+			std::string edge;
+			vec4* temp;
+			while (true){
+				//edge = (*p1).toString() + (*p2).toString();
+				temp = new vec4((*calculatedPolyNormal)[0], (*calculatedPolyNormal)[1], (*calculatedPolyNormal)[2]);
+				updateEdgePolygonHashAux((*p1), (*p2), temp, true);
+				temp = new vec4((*givenPolyNormal)[0], (*givenPolyNormal)[1], (*givenPolyNormal)[2]);
+				updateEdgePolygonHashAux((*p1), (*p2), temp, false); p1 = p2;
+				p2 = polygon->next();
+				if (p2 == NULL){
+					p2 = polygon->first();
+					//edge = (*p1).toString() + (*p2).toString();
+					temp = new vec4((*calculatedPolyNormal)[0], (*calculatedPolyNormal)[1], (*calculatedPolyNormal)[2]);
+					updateEdgePolygonHashAux((*p1), (*p2), temp, true);
+					temp = new vec4((*givenPolyNormal)[0], (*givenPolyNormal)[1], (*givenPolyNormal)[2]);
+					updateEdgePolygonHashAux((*p1), (*p2), temp, false);
+					calculatedPolyNormal = calculatedPolygonNormals->next();
+					givenPolyNormal = polygonNormals->next();
+					break;
+				}
+			}
+		}
+	}
+
+	void updateEdgePolygonHashAux(CG_Point p1, CG_Point p2, vec4* polyNormal, bool updateByCalculated){
+		std::string edge1 = p1.toString() + p2.toString(), edge2 = p2.toString() + p1.toString();
+		if (updateByCalculated){
+			if (edgeCalculatedPolygonNormalHash.count(edge1) == 0){
+				if (edgeCalculatedPolygonNormalHash.count(edge2) == 0){
+					CG_NormalList* newNormalList = new CG_NormalList();
+					newNormalList->add(polyNormal);
+					edgeCalculatedPolygonNormalHash.insert({ edge1, newNormalList });
+				}
+				else{
+					CG_NormalList* normalList = edgeCalculatedPolygonNormalHash[edge2];
+					normalList->add(polyNormal);
+				}
+			}
+			else{
+				CG_NormalList* normalList = edgeCalculatedPolygonNormalHash[edge1];
+				normalList->add(polyNormal);
+			}
+		}
+		else{
+			if (edgeGivenPolygonNormalHash.count(edge1) == 0){
+				if (edgeGivenPolygonNormalHash.count(edge2) == 0){
+					CG_NormalList* newNormalList = new CG_NormalList();
+					newNormalList->add(polyNormal);
+					edgeGivenPolygonNormalHash.insert({ edge1, newNormalList });
+				}
+				else{
+					CG_NormalList* normalList = edgeGivenPolygonNormalHash[edge2];
+					normalList->add(polyNormal);
+				}
+			}
+			else{
+				CG_NormalList* normalList = edgeGivenPolygonNormalHash[edge1];
+				normalList->add(polyNormal);
+			}
+		}
+		/*else{
+			if (edgeGivenPolygonNormalHash.count(edge) == 0){
+				CG_NormalList* newNormalList = new CG_NormalList();
+				newNormalList->add(polyNormal);
+				edgeGivenPolygonNormalHash.insert({ edge, newNormalList });
+			}
+			else{
+				CG_NormalList* normalList = edgeGivenPolygonNormalHash[edge];
+				normalList->add(polyNormal);
+			}
+		}*/
 	}
 };
 

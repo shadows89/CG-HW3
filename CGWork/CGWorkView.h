@@ -71,6 +71,7 @@ private:
 	void drawBBox(Model* model);
 	void hashPixel(int x, int y, int z);
 	void hashPixelPhong(int x, int y, int z);
+	bool isSilhouette(CG_Point p1, CG_Point p2);
 	COLORREF clacColor(int x, int y);
 
 	LightParams m_lights[MAX_LIGHT];	//configurable lights array
@@ -182,9 +183,25 @@ protected:
 	afx_msg void OnUpdateBackgroundImageViewStrech(CCmdUI* pCmdUI);
 	afx_msg void OnBackgroundImageViewRepeat();
 	afx_msg void OnUpdateBackgroundImageViewRepeat(CCmdUI* pCmdUI);
+	afx_msg void OnNormalInverse();
+	afx_msg void OnCreatePicture();
+	afx_msg void OnBackfaceCulling();
+	afx_msg void OnUpdateBackfaceCulling(CCmdUI* pCmdUI);
+	afx_msg void OnMaterialConstants();
+	afx_msg void OnSilhouette();
+	afx_msg void OnUpdateSilhouette(CCmdUI* pCmdUI);
+	afx_msg void OnRenderOptions();
 
+	afx_msg void OnChoosePolygonNormal();
+	afx_msg void OnUpdateChoosePolygonNormal(CCmdUI* pCmdUI);
+	afx_msg void OnChooseGivenPlygonNormal();
+	afx_msg void OnCUpdatehooseGivenPolygonNormal(CCmdUI* pCmdUI);
+	afx_msg void OnChooseVertexNormal();
+	afx_msg void OnUpdateChooseVertexNormal(CCmdUI* pCmdUI);
+	afx_msg void OnChooseGivenVertexNormal();
+	afx_msg void OnUpdateChooseGivenVertexNormal(CCmdUI* pCmdUI);
 
-
+	afx_msg void OnSilhoutteColor();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

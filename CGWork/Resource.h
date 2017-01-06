@@ -8,6 +8,7 @@
 #define IDR_CGWorkTYPE                  129
 #define IDD_LIGHTS_DLG                  134
 #define IDD_MATERIAL_DLG                136
+#define IDD_DIALOG1                     140
 #define IDC_LIGHT_SPACE                 1010
 #define IDC_RADIO_LIGHT1                1017
 #define IDC_RADIO_LIGHT2                1018
@@ -38,7 +39,10 @@
 #define IDC_SLIDER2                     1041
 #define IDC_MATERIAL_SPECULAR           1042
 #define IDC_BUTTON1                     1042
+#define IDC_EDIT1                       1043
 #define IDC_SLIDER4                     1044
+#define IDC_EDIT2                       1044
+#define IDC_EDIT3                       1045
 #define ID_FILE_LOAD                    32771
 #define ID_VIEW_ORTHOGRAPHIC            32772
 #define ID_VIEW_PERSPECTIVE             32773
@@ -80,6 +84,7 @@
 #define ID_LIGHT_SHADING_PHONG          32824
 #define ID_LIGHT_SHADING_NOSHADING      32825
 #define ID_BUTTON32826                  32826
+#define ID_INVERSE                      32826
 #define ID_VIEW_BACKGROUNDIMAGE         32827
 #define ID_BACKGROUNDIMAGE_LOAD         32828
 #define ID_BACKGROUNDIMAGE_RESET        32829
@@ -87,14 +92,26 @@
 #define ID_VIEW_NORMAL                  32831
 #define ID_VIEW_STRECH                  32832
 #define ID_VIEW_REPEAT                  32833
+#define ID_BACKFACE_CULLING             32835
+#define ID_CREATE_PICTURE               32836
+#define ID_LIGHT_MATERIAL               32837
+#define ID_SILHOUETTE                   32838
+#define ID_RENDER_RENDEROPTIONS         32839
+#define ID_NORMALS_POLYGON              32840
+#define ID_POLYGON_GIVEN32841           32841
+#define ID_POLYGON_CALCULATED32842      32842
+#define ID_NORMALS_VERTEX               32843
+#define ID_VERTEX_GIVEN32844            32844
+#define ID_VERTEX_CALCULATED32845       32845
+#define ID_COLOR_SILHOUTTE              32846
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        139
-#define _APS_NEXT_COMMAND_VALUE         32834
-#define _APS_NEXT_CONTROL_VALUE         1043
+#define _APS_NEXT_RESOURCE_VALUE        141
+#define _APS_NEXT_COMMAND_VALUE         32847
+#define _APS_NEXT_CONTROL_VALUE         1044
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
