@@ -67,6 +67,10 @@ public:
 		return tmp[0] + tmp[1] + tmp[2];
 	}
 
+	double dist(vec4& v){
+		return sqrt(pow(v[0] - (*this)[0], 2) + pow(v[1] - (*this)[1], 2) + pow(v[2] - (*this)[2], 2) + pow(v[3] - (*this)[3], 2));
+	}
+
 	bool isZero(){
 		for (int i = 0; i < 3; i++){
 			if (fabs((*this)[i]) < EPSILON)

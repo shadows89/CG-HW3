@@ -203,6 +203,32 @@ protected:
 	afx_msg void OnUpdateChooseGivenVertexNormal(CCmdUI* pCmdUI);
 	afx_msg void OnSilhoutteColor();
 
+	afx_msg void OnRecord();
+	afx_msg void OnUpdateRecord(CCmdUI* pCmdUI);
+	afx_msg void OnPlay();
+
+	afx_msg void OnFog();
+	afx_msg void OnUpdateFog(CCmdUI* pCmdUI);
+	afx_msg void OnFogColorUpdate();
+
+	afx_msg void OnAliasing();
+	afx_msg void OnAliasingUpdate(CCmdUI* pCmdUI);
+	afx_msg void OnBox();
+	afx_msg void OnBoxUpdate(CCmdUI* pCmdUI);
+	afx_msg void OnTriangle();
+	afx_msg void OnTriangleUpdate(CCmdUI* pCmdUI);
+	afx_msg void OnSinc();
+	afx_msg void OnSincUpdate(CCmdUI* pCmdUI);
+	afx_msg void OnGaussien();
+	afx_msg void OnGaussienUpdate(CCmdUI* pCmdUI);
+	afx_msg void OnSize3X3();
+	afx_msg void OnSize3X3Update(CCmdUI* pCmdUI);
+	afx_msg void OnSize5X5();
+	afx_msg void OnSize5X5Update(CCmdUI* pCmdUI);
+	
+	afx_msg void OnMotionBlur();
+	afx_msg void OnMotionBlurUpdate(CCmdUI* pCmdUI);
+
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

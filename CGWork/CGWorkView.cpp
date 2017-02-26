@@ -22,7 +22,7 @@ static char THIS_FILE[] = __FILE__;
 #include "PngWrapper.h"
 #include "iritSkel.h"
 
-
+#include <Windows.h>
 
 // For Status Bar access
 #include "MainFrm.h"
@@ -30,6 +30,7 @@ static char THIS_FILE[] = __FILE__;
 #include "LinkedList.h"
 #include <unordered_map>
 #include <set>
+
 extern CG_ModelList models;
 extern double max;
 extern int firstDraw;
@@ -43,13 +44,17 @@ double sesetivity = 1.0/15.0;
 typedef std::tuple<double, COLORREF,Model*> Ztuple;
 typedef std::tuple<CG_Point, COLORREF> hashTuple;
 typedef std::tuple<CG_Point, vec4> PhongTuple;
-
+typedef std::tuple<mat4, mat4, mat4> MatrixTuple;
+typedef LinkedList<MatrixTuple*> MatrixList;
 
 std::vector<COLORREF>* vec_bitmap = NULL;
+
 std::vector<Model*>* pixelOwner = NULL;
 std::vector<Ztuple>* ZBuffer;
 std::unordered_map<int, hashTuple> pixelHashY;
 std::unordered_map<int, hashTuple> pixelHashX;
+
+MatrixList KeyFrames;
 
 std::unordered_map<int, PhongTuple> pixelHashYPhong;
 std::unordered_map<int, PhongTuple> pixelHashXPhong;
@@ -101,6 +106,8 @@ bool polyFill = false;
 bool fillingPoly = false;
 bool onFrame = true;
 
+
+
 bool calcByGivenPolyNormals = true;
 bool calcByGivenVertexNormals = true;
 
@@ -114,12 +121,26 @@ double F = - 50;
 
 int inverse = 1;
 
-/*typedef struct{
-	CG_Point point;
-	CG_Point normal;
-	COLORREF color;
-}PointData;*/
 
+bool _antiAliasing = false;
+typedef enum{Box , Triangle , Sinc , Gaussien} Filter;
+Filter currentFilter = Gaussien;
+int filterSize = 5;
+double box_3[3][3], triangle_3[3][3], gausse_3[3][3], sinc_3[3][3];
+double box_5[5][5], triangle_5[5][5], gausse_5[5][5], sinc_5[5][5];
+
+bool _fog = false;
+COLORREF fogColor = RGB(128, 128, 128);
+//double fog_const = 0.5;
+int maxDis = 2000;
+
+bool _recording = false;
+int numOfFrames = 10;
+
+bool _blur = false;
+std::vector<COLORREF>* BlurBuffer = NULL;
+double blurFactor = 0.25;
+bool firstFrame = true;
 
 CString _backgroundPngPath = "";
 int _backgroundImageState = 0;
@@ -223,8 +244,37 @@ BEGIN_MESSAGE_MAP(CCGWorkView, CView)
 	ON_COMMAND(ID_SILHOUETTE, OnSilhouette)
 	ON_UPDATE_COMMAND_UI(ID_SILHOUETTE, OnUpdateSilhouette)
 	ON_COMMAND(ID_RENDER_RENDEROPTIONS, OnRenderOptions)
-	ON_COMMAND(ID_COLOR_SILHOUTTE,OnSilhoutteColor)
+	ON_COMMAND(ID_COLOR_SILHOUTTE, OnSilhoutteColor)
 
+	ON_COMMAND(ID_RECORD, OnRecord)
+	ON_UPDATE_COMMAND_UI(ID_RECORD, OnUpdateRecord)
+	ON_COMMAND(ID_PLAY, OnPlay)
+
+	ON_COMMAND(ID_FOG, OnFog)
+	ON_UPDATE_COMMAND_UI(ID_FOG, OnUpdateFog)
+	ON_COMMAND(ID_FOG_FOGCOLOR, OnFogColorUpdate)
+
+
+	ON_COMMAND(ID_ALIASING, OnAliasing)
+	ON_UPDATE_COMMAND_UI(ID_ALIASING, OnAliasingUpdate)
+
+	ON_COMMAND(ID_FILTER_BOX, OnBox)
+	ON_UPDATE_COMMAND_UI(ID_FILTER_BOX, OnBoxUpdate)
+	ON_COMMAND(ID_FILTER_TRIANGLE, OnTriangle)
+	ON_UPDATE_COMMAND_UI(ID_FILTER_BOX, OnTriangleUpdate)
+	ON_COMMAND(ID_FILTER_SINC, OnSinc)
+	ON_UPDATE_COMMAND_UI(ID_FILTER_SINC, OnSincUpdate)
+	ON_COMMAND(ID_FILTER_GAUSSIEN, OnGaussien)
+	ON_UPDATE_COMMAND_UI(ID_FILTER_GAUSSIEN, OnGaussienUpdate)
+
+	ON_COMMAND(ID_FILTERSIZE_3X3, OnSize3X3)
+	ON_UPDATE_COMMAND_UI(ID_FILTERSIZE_3X3, OnSize3X3Update)
+	ON_COMMAND(ID_FILTERSIZE_5X5, OnSize5X5)
+	ON_UPDATE_COMMAND_UI(ID_FILTERSIZE_5X5, OnSize5X5Update)
+	
+	ON_COMMAND(ID_MOTIONBLUR, OnMotionBlur)
+	ON_UPDATE_COMMAND_UI(ID_MOTIONBLUR, OnMotionBlurUpdate)
+	
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -312,6 +362,52 @@ void CCGWorkView::OnBackgroundImageReset(){
 	Invalidate();	// force a WM_PAINT for drawing.
 }
 
+void createFilters(){
+	box_3[0][0] = 1.0 / 9; box_3[0][1] = 1.0 / 9; box_3[0][2] = 1.0 / 9;
+	box_3[1][0] = 1.0 / 9; box_3[1][1] = 1.0 / 9; box_3[1][2] = 1.0 / 9;
+	box_3[2][0] = 1.0 / 9; box_3[2][1] = 1.0 / 9; box_3[2][2] = 1.0 / 9;
+
+	box_5[0][0] = 1.0 / 25; box_5[0][1] = 1.0 / 25; box_5[0][2] = 1.0 / 25; box_5[0][3] = 1.0 / 25; box_5[0][4] = 1.0 / 25;
+	box_5[1][0] = 1.0 / 25; box_5[1][1] = 1.0 / 25; box_5[1][2] = 1.0 / 25; box_5[1][3] = 1.0 / 25; box_5[1][4] = 1.0 / 25;
+	box_5[2][0] = 1.0 / 25; box_5[2][1] = 1.0 / 25; box_5[2][2] = 1.0 / 25; box_5[2][3] = 1.0 / 25; box_5[2][4] = 1.0 / 25;
+	box_5[3][0] = 1.0 / 25; box_5[3][1] = 1.0 / 25; box_5[3][2] = 1.0 / 25; box_5[3][3] = 1.0 / 25; box_5[3][4] = 1.0 / 25;
+	box_5[4][0] = 1.0 / 25; box_5[4][1] = 1.0 / 25; box_5[4][2] = 1.0 / 25; box_5[4][3] = 1.0 / 25; box_5[4][4] = 1.0 / 25;
+
+
+
+	sinc_3[0][0] = 2.0 / 24; sinc_3[0][1] = 3.0 / 24; sinc_3[0][2] = 2.0 / 24;
+	sinc_3[1][0] = 3.0 / 24; sinc_3[1][1] = 4.0 / 24; sinc_3[1][2] = 3.0 / 24;
+	sinc_3[2][0] = 2.0 / 24; sinc_3[2][1] = 3.0 / 24; sinc_3[2][2] = 2.0 / 24;
+
+	sinc_5[0][0] = -2.0 / 33; sinc_5[0][1] = -1.0 / 33; sinc_5[0][2] = 0.0 / 33; sinc_5[0][3] = -1.0 / 33; sinc_5[0][4] = -2.0 / 33;
+	sinc_5[1][0] = -1.0 / 33; sinc_5[1][1] = 4.0 / 33; sinc_5[1][2] = 6.0 / 33; sinc_5[1][3] = 4.0 / 33; sinc_5[1][4] = -1.0 / 33;
+	sinc_5[2][0] =  0.0 / 33; sinc_5[2][1] = 6.0 / 33; sinc_5[2][2] = 9.0 / 33; sinc_5[2][3] = 6.0 / 33; sinc_5[2][4] = 0.0 / 33;
+	sinc_5[3][0] = -1.0 / 33; sinc_5[3][1] = 4.0 / 33; sinc_5[3][2] = 6.0 / 33; sinc_5[3][3] = 4.0 / 33; sinc_5[3][4] = -1.0 / 33;
+	sinc_5[4][0] = -2.0 / 33; sinc_5[4][1] = -1.0 / 33; sinc_5[4][2] = 0.0 / 33; sinc_5[4][3] = -1.0 / 33; sinc_5[4][4] = -2.0 / 33;
+
+
+
+	triangle_3[0][0] = 1.0 / 16; triangle_3[0][1] = 2.0 / 16; triangle_3[0][2] = 1.0 / 16;
+	triangle_3[1][0] = 2.0 / 16; triangle_3[1][1] = 4.0 / 16; triangle_3[1][2] = 2.0 / 16;
+	triangle_3[2][0] = 1.0 / 16; triangle_3[2][1] = 2.0 / 16; triangle_3[2][2] = 1.0 / 16;
+
+	triangle_5[0][0] = 1.0 / 81; triangle_5[0][1] = 2.0 / 81; triangle_5[0][2] = 3.0 / 81; triangle_5[0][3] = 2.0 / 81; triangle_5[0][4] = 1.0 / 81;
+	triangle_5[1][0] = 2.0 / 81; triangle_5[1][1] = 4.0 / 81; triangle_5[1][2] = 6.0 / 81; triangle_5[1][3] = 4.0 / 81; triangle_5[1][4] = 2.0 / 81;
+	triangle_5[2][0] = 3.0 / 81; triangle_5[2][1] = 6.0 / 81; triangle_5[2][2] = 9.0 / 81; triangle_5[2][3] = 6.0 / 81; triangle_5[2][4] = 3.0 / 81;
+	triangle_5[3][0] = 2.0 / 81; triangle_5[3][1] = 4.0 / 81; triangle_5[3][2] = 6.0 / 81; triangle_5[3][3] = 4.0 / 81; triangle_5[3][4] = 2.0 / 81;
+	triangle_5[4][0] = 1.0 / 81; triangle_5[4][1] = 2.0 / 81; triangle_5[4][2] = 3.0 / 81; triangle_5[4][3] = 2.0 / 81; triangle_5[4][4] = 1.0 / 81;
+
+
+	gausse_3[0][0] = 1.0 / 16; gausse_3[0][1] = 1.0 / 16; gausse_3[0][2] = 1.0 / 16;
+	gausse_3[1][0] = 2.0 / 16; gausse_3[1][1] = 1.0 / 16; gausse_3[1][2] = 1.0 / 16;
+	gausse_3[2][0] = 1.0 / 16; gausse_3[2][1] = 1.0 / 16; gausse_3[2][2] = 1.0 / 16;
+
+	gausse_5[0][0] = 1.0 / 50; gausse_5[0][1] = 1.0 / 50; gausse_5[0][2] = 1.0 / 50; gausse_5[0][3] = 1.0 / 50; gausse_5[0][4] = 1.0 / 50;
+	gausse_5[1][0] = 1.0 / 50; gausse_5[1][1] = 2.0 / 50; gausse_5[1][2] = 4.0 / 50; gausse_5[1][3] = 2.0 / 50; gausse_5[1][4] = 1.0 / 50;
+	gausse_5[2][0] = 1.0 / 50; gausse_5[2][1] = 4.0 / 50; gausse_5[2][2] = 10.0 / 50; gausse_5[2][3] = 4.0 / 50; gausse_5[2][4] = 1.0 / 50;
+	gausse_5[3][0] = 1.0 / 50; gausse_5[3][1] = 2.0 / 50; gausse_5[3][2] = 4.0 / 50; gausse_5[3][3] = 2.0 / 50; gausse_5[3][4] = 1.0 / 50;
+	gausse_5[4][0] = 1.0 / 50; gausse_5[4][1] = 1.0 / 50; gausse_5[4][2] = 1.0 / 50; gausse_5[4][3] = 1.0 / 50; gausse_5[4][4] = 1.0 / 50;
+}
 
 CCGWorkView::CCGWorkView()
 {
@@ -333,7 +429,7 @@ CCGWorkView::CCGWorkView()
 
 
 	firstDraw = 1;
-
+	createFilters();
 }
 
 CCGWorkView::~CCGWorkView()
@@ -467,6 +563,11 @@ void CCGWorkView::OnSize(UINT nType, int cx, int cy)
 	global_w = cx;
 	global_h = cy;
 	//ZBuffer = std::vector<mytuple>((global_h + 1)*(global_w + 1));
+	if (BlurBuffer != NULL){
+		delete BlurBuffer;
+	}
+	BlurBuffer = new std::vector<COLORREF>((global_h + 1)*(global_w + 1), NULL);
+	firstFrame = true;
 }
 
 
@@ -1517,6 +1618,186 @@ bool CCGWorkView::isSilhouette(CG_Point p1, CG_Point p2){
 }
 
 
+COLORREF getFilteredColor_3(int x, int y, double filter[][3]){
+	COLORREF c = std::get<1>((*ZBuffer)[(x - 1) + (y - 1)*global_w]);
+	int r = GetRValue(c) * filter[0][0];
+	int g = GetGValue(c) * filter[0][0];
+	int b = GetBValue(c) * filter[0][0];
+	
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y)*global_w]);
+	r += GetRValue(c) * filter[0][1];
+	g += GetGValue(c) * filter[0][1];
+	b += GetBValue(c) * filter[0][1];
+	
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[0][2];
+	g += GetGValue(c) * filter[0][2];
+	b += GetBValue(c) * filter[0][2];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[1][0];
+	g += GetGValue(c) * filter[1][0];
+	b += GetBValue(c) * filter[1][0];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y)*global_w]);
+	r += GetRValue(c) * filter[1][1];
+	g += GetGValue(c) * filter[1][1];
+	b += GetBValue(c) * filter[1][1];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[1][2];
+	g += GetGValue(c) * filter[1][2];
+	b += GetBValue(c) * filter[1][2];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[2][0];
+	g += GetGValue(c) * filter[2][0];
+	b += GetBValue(c) * filter[2][0];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y)*global_w]);
+	r += GetRValue(c) * filter[2][1];
+	g += GetGValue(c) * filter[2][1];
+	b += GetBValue(c) * filter[2][1];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[2][2];
+	g += GetGValue(c) * filter[2][2];
+	b += GetBValue(c) * filter[2][2];
+
+	return RGB(r,g,b);
+}
+
+COLORREF getFilteredColor_5(int x, int y, double filter[][5]){
+	COLORREF c = std::get<1>((*ZBuffer)[(x - 2) + (y - 2)*global_w]);
+	int r = GetRValue(c) * filter[0][0];
+	int g = GetGValue(c) * filter[0][0];
+	int b = GetBValue(c) * filter[0][0];
+
+	c = std::get<1>((*ZBuffer)[(x - 2) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[0][1];
+	g += GetGValue(c) * filter[0][1];
+	b += GetBValue(c) * filter[0][1];
+
+	c = std::get<1>((*ZBuffer)[(x - 2) + (y)*global_w]);
+	r += GetRValue(c) * filter[0][2];
+	g += GetGValue(c) * filter[0][2];
+	b += GetBValue(c) * filter[0][2];
+
+	c = std::get<1>((*ZBuffer)[(x - 2) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[0][3];
+	g += GetGValue(c) * filter[0][3];
+	b += GetBValue(c) * filter[0][3];
+
+	c = std::get<1>((*ZBuffer)[(x - 2 ) + (y + 2)*global_w]);
+	r += GetRValue(c) * filter[0][4];
+	g += GetGValue(c) * filter[0][4];
+	b += GetBValue(c) * filter[0][4];
+
+
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y - 2)*global_w]);
+	r += GetRValue(c) * filter[1][0];
+	g += GetGValue(c) * filter[1][0];
+	b += GetBValue(c) * filter[1][0];
+
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[1][1];
+	g += GetGValue(c) * filter[1][1];
+	b += GetBValue(c) * filter[1][1];
+
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y)*global_w]);
+	r += GetRValue(c) * filter[1][2];
+	g += GetGValue(c) * filter[1][2];
+	b += GetBValue(c) * filter[1][2];
+
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[1][3];
+	g += GetGValue(c) * filter[1][3];
+	b += GetBValue(c) * filter[1][3];
+
+	c = std::get<1>((*ZBuffer)[(x - 1) + (y + 2)*global_w]);
+	r += GetRValue(c) * filter[1][4];
+	g += GetGValue(c) * filter[1][4];
+	b += GetBValue(c) * filter[1][4];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y - 2)*global_w]);
+	r += GetRValue(c) * filter[2][0];
+	g += GetGValue(c) * filter[2][0];
+	b += GetBValue(c) * filter[2][0];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[2][1];
+	g += GetGValue(c) * filter[2][1];
+	b += GetBValue(c) * filter[2][1];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y)*global_w]);
+	r += GetRValue(c) * filter[2][2];
+	g += GetGValue(c) * filter[2][2];
+	b += GetBValue(c) * filter[2][2];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[2][3];
+	g += GetGValue(c) * filter[2][3];
+	b += GetBValue(c) * filter[2][3];
+
+	c = std::get<1>((*ZBuffer)[(x) + (y + 2)*global_w]);
+	r += GetRValue(c) * filter[2][4];
+	g += GetGValue(c) * filter[2][4];
+	b += GetBValue(c) * filter[2][4];
+							   
+
+
+	c = std::get<1>((*ZBuffer)[(x + 1)+(y - 2)*global_w]);
+	r += GetRValue(c) * filter[3][0];
+	g += GetGValue(c) * filter[3][0];
+	b += GetBValue(c) * filter[3][0];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y - 1)*global_w]);
+	r += GetRValue(c) * filter[3][1];
+	g += GetGValue(c) * filter[3][1];
+	b += GetBValue(c) * filter[3][1];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y)*global_w]);
+	r += GetRValue(c) * filter[3][2];
+	g += GetGValue(c) * filter[3][2];
+	b += GetBValue(c) * filter[3][2];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y + 1)*global_w]);
+	r += GetRValue(c) * filter[3][3];
+	g += GetGValue(c) * filter[3][3];
+	b += GetBValue(c) * filter[3][3];
+
+	c = std::get<1>((*ZBuffer)[(x + 1) + (y + 2)*global_w]);
+	r += GetRValue(c) * filter[3][4];
+	g += GetGValue(c) * filter[3][4];
+	b += GetBValue(c) * filter[3][4];
+
+
+	c = std::get<1>((*ZBuffer)[(x + 2)+(y - 2)*global_w]);
+	r += GetRValue(c) * filter[4][0];
+	g += GetGValue(c) * filter[4][0];
+	b += GetBValue(c) * filter[4][0];
+
+	c = std::get<1>((*ZBuffer)[(x + 2)+(y - 1)*global_w]);
+	r += GetRValue(c) * filter[4][1];
+	g += GetGValue(c) * filter[4][1];
+	b += GetBValue(c) * filter[4][1];
+
+	c = std::get<1>((*ZBuffer)[(x + 2)+(y)*global_w]);
+	r += GetRValue(c) * filter[4][2];
+	g += GetGValue(c) * filter[4][2];
+	b += GetBValue(c) * filter[4][2];
+
+	c = std::get<1>((*ZBuffer)[(x + 2)+(y + 1)*global_w]);
+	r += GetRValue(c) * filter[4][3];
+	g += GetGValue(c) * filter[4][3];
+	b += GetBValue(c) * filter[4][3];
+
+	c = std::get<1>((*ZBuffer)[(x + 2)+(y + 2)*global_w]);
+	r += GetRValue(c) * filter[4][4];
+	g += GetGValue(c) * filter[4][4];
+	b += GetBValue(c) * filter[4][4];
+	return RGB(r, g, b);
+}
 
 void CCGWorkView::OnDraw(CDC* pDC)
 {
@@ -1819,9 +2100,162 @@ void CCGWorkView::OnDraw(CDC* pDC)
 			}
 		}
 	}
-	for (int x = 0; x <= w; x++){
-		for (int y = 0; y <= h; y++){
-			(*vec_bitmap)[x + y*w] = std::get<1>((*ZBuffer)[x + y*w]);
+
+	if (_antiAliasing){
+		switch (currentFilter){
+		case Box:
+			if (filterSize == 3){
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_3(x, y, box_3);
+					}
+				}
+			}
+			else{
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_5(x, y, box_5);
+					}
+				}
+			}
+			break;
+		case Triangle:
+			if (filterSize == 3){
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_3(x, y, triangle_3);
+					}
+				}
+			}
+			else{
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_5(x, y, triangle_5);
+					}
+				}
+			}
+			break;
+		case Sinc:
+			if (filterSize == 3){
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_3(x, y, sinc_3);
+					}
+				}
+			}
+			else{
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_5(x, y, sinc_5);
+					}
+				}
+			}
+			break;
+		case Gaussien:
+			if (filterSize == 3){
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_3(x, y, gausse_3);
+					}
+				}
+			}
+			else{
+				for (int x = filterSize - 1; x < w - filterSize / 2; x++){
+					for (int y = filterSize - 1; y < h - filterSize / 2; y++){
+						(*vec_bitmap)[x + y*w] = getFilteredColor_5(x, y, gausse_5);
+					}
+				}
+			}
+			break;
+		}
+		if (_fog){
+			for (int x = 0; x <= w; x++){
+				for (int y = 0; y <= h; y++){
+					COLORREF color = std::get<1>((*ZBuffer)[x + y*w]);
+					int red = GetRValue(color);
+					int green = GetGValue(color);
+					int blue = GetBValue(color);
+
+					double dist = vec4(x, y, std::get<0>((*ZBuffer)[x + y*w])).dist(camera.eye());
+					dist = min(dist, maxDis);
+
+					int fogR = GetRValue(fogColor);
+					int fogG = GetGValue(fogColor);
+					int fogB = GetBValue(fogColor);
+
+					double fogFactor = dist / maxDis;
+					red = red * fogFactor + fogR*(1 - fogFactor);
+					green = green * fogFactor + fogG*(1 - fogFactor);
+					blue = blue * fogFactor + fogB*(1 - fogFactor);
+					(*vec_bitmap)[x + y*w] = RGB(red, green, blue);
+				}
+			}
+		}
+	}
+	else{
+		for (int x = 0; x <= w; x++){
+			for (int y = 0; y <= h; y++){
+				if (_fog){
+					COLORREF color = std::get<1>((*ZBuffer)[x + y*w]);
+					int red = GetRValue(color);
+					int green = GetGValue(color);
+					int blue = GetBValue(color);
+
+					double dist = vec4(x, y, std::get<0>((*ZBuffer)[x + y*w])).dist(camera.eye());
+					dist = min(dist, maxDis);
+
+					int fogR = GetRValue(fogColor);
+					int fogG = GetGValue(fogColor);
+					int fogB = GetBValue(fogColor);
+
+					double fogFactor = dist / maxDis;
+					red = red * fogFactor + fogR*(1 - fogFactor);
+					green = green * fogFactor + fogG*(1 - fogFactor);
+					blue = blue * fogFactor + fogB*(1 - fogFactor);
+					(*vec_bitmap)[x + y*w] = RGB(red, green, blue);
+				}
+				else{
+					(*vec_bitmap)[x + y*w] = std::get<1>((*ZBuffer)[x + y*w]);
+				}
+			}
+		}
+	}
+
+	if (_blur){
+		if (firstFrame){
+			for (int x = 0; x <= w; x++){
+				for (int y = 0; y <= h; y++){
+					(*BlurBuffer)[x + y*w] = std::get<1>((*ZBuffer)[x + y*w]);
+				}
+			}
+			firstFrame = false;
+		}
+		else{
+			for (int x = 0; x <= w; x++){
+				for (int y = 0; y <= h; y++){
+					COLORREF colorZ = std::get<1>((*ZBuffer)[x + y*w]);
+					int redZ = GetRValue(colorZ);
+					int greenZ = GetGValue(colorZ);
+					int blueZ = GetBValue(colorZ);
+
+					COLORREF colorBlur = ((*BlurBuffer)[x + y*w]);
+					int redBlur = GetRValue(colorBlur);
+					int greenBlur = GetGValue(colorBlur);
+					int blueBlur = GetBValue(colorBlur);
+
+					int redRes = (1 - blurFactor) * redZ + blurFactor * redBlur;
+					if (redRes > 255)
+						redRes = 255;
+					int greenRes = (1 - blurFactor) * greenZ + blurFactor * greenBlur;
+					if (greenRes > 255)
+						greenRes = 255;
+					int blueRes = (1 - blurFactor) * blueZ + blurFactor * blueBlur;
+					if (blueRes > 255)
+						blueRes = 255;
+					
+					(*BlurBuffer)[x + y*w] = RGB(blueBlur, greenBlur, redRes);
+				}
+			}
 		}
 	}
 
@@ -1833,11 +2267,22 @@ void CCGWorkView::OnDraw(CDC* pDC)
 		PngWrapper png(fileName, w, h);
 		bool res = png.InitWritePng();
 		if (res){
-			for (int x = 0; x <= w; x++){
-				for (int y = 0; y <= h; y++){
-					int color = std::get<1>((*ZBuffer)[x + y*w]);
-					COLORREF c = SET_RGB(GetBValue(color), GetGValue(color), GetRValue(color));
-					png.SetValue(x, y, c);
+			if (_blur){
+				for (int x = 0; x <= w; x++){
+					for (int y = 0; y <= h; y++){
+						int color = ((*BlurBuffer)[x + y*w]);
+						COLORREF c = SET_RGB(GetRValue(color), GetGValue(color), GetBValue(color));
+						png.SetValue(x, y, c);
+					}
+				}
+			}
+			else{
+				for (int x = 0; x <= w; x++){
+					for (int y = 0; y <= h; y++){
+						int color = std::get<1>((*ZBuffer)[x + y*w]);
+						COLORREF c = SET_RGB(GetBValue(color), GetGValue(color), GetRValue(color));
+						png.SetValue(x, y, c);
+					}
 				}
 			}
 			png.WritePng();
@@ -1861,7 +2306,6 @@ void CCGWorkView::OnDraw(CDC* pDC)
 	}
 	delete vec_bitmap;
 	delete ZBuffer;
-
 }
 
 /*void CCGWorkView::scanPolyFill(){
@@ -2172,6 +2616,11 @@ void CCGWorkView::OnRButtonDown(UINT nFlags, CPoint point){
 
 void CCGWorkView::OnLButtonUp(UINT nFlags, CPoint point){
 	mousePressed = 0;
+
+	// Add a key frame
+	if (_recording){
+		KeyFrames.add(new MatrixTuple(m_translate, m_scale, m_rotate));
+	}
 }
 
 void CCGWorkView::OnMouseMove(UINT nFlags, CPoint point){
@@ -2642,4 +3091,145 @@ void CCGWorkView::OnChooseGivenVertexNormal(){
 
 void CCGWorkView::OnUpdateChooseGivenVertexNormal(CCmdUI* pCmdUI){
 	pCmdUI->SetCheck(calcByGivenVertexNormals);
+}
+
+
+void CCGWorkView::OnRecord(){
+	_recording = !_recording;
+	if (_recording)
+		KeyFrames.clear();
+}
+void CCGWorkView::OnUpdateRecord(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(_recording);
+}
+
+
+mat4 getDiffMatrix(mat4 a, mat4 b, int diff){
+	vec4 row1((b[0][0] - a[0][0]) / diff, (b[0][1] - a[0][1]) / diff, (b[0][2] - a[0][2]) / diff, (b[0][3] - a[0][3]) / diff);
+	vec4 row2((b[1][0] - a[1][0]) / diff, (b[1][1] - a[1][1]) / diff, (b[1][2] - a[1][2]) / diff, (b[1][3] - a[1][3]) / diff);
+	vec4 row3((b[2][0] - a[2][0]) / diff, (b[2][1] - a[2][1]) / diff, (b[2][2] - a[2][2]) / diff, (b[2][3] - a[2][3]) / diff);
+	vec4 row4((b[3][0] - a[3][0]) / diff, (b[3][1] - a[3][1]) / diff, (b[3][2] - a[3][2]) / diff, (b[3][3] - a[3][3]) / diff);
+
+	return mat4(row1, row2, row3, row4);
+}
+
+void CCGWorkView::OnPlay(){
+	
+	mat4 tmpTranslate = m_translate;
+	mat4 tmp_scale = m_scale;
+	mat4 tmpRotate = m_rotate;
+
+	MatrixTuple* current = KeyFrames.first();
+	MatrixTuple* next = KeyFrames.next();
+
+	CDC* pdc = GetDC();
+
+	while (next != NULL){
+		mat4 diffMatTranslate = getDiffMatrix(std::get<0>(*current), std::get<0>(*next), numOfFrames);
+		mat4 diffMatScale = getDiffMatrix(std::get<1>(*current), std::get<1>(*next), numOfFrames);
+		mat4 diffMatRotate = getDiffMatrix(std::get<2>(*current), std::get<2>(*next), numOfFrames);
+		for (int i = 0; i < numOfFrames; i++){
+			m_translate = std::get<0>(*current) + (diffMatTranslate * i);
+			m_scale = std::get<1>(*current) + (diffMatScale * i);
+			m_rotate = std::get<2>(*current) + (diffMatRotate * i);
+			OnDraw(pdc);
+			Sleep(5);
+		}
+		current = next;
+		next = KeyFrames.next();
+	}
+
+	
+
+	m_translate = tmpTranslate;
+	m_scale = tmp_scale;
+	m_rotate = tmpRotate;
+	Invalidate();
+}
+
+
+void CCGWorkView::OnFog(){
+	_fog = !_fog;
+	Invalidate();
+}
+void CCGWorkView::OnUpdateFog(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(_fog);
+}
+void CCGWorkView::OnFogColorUpdate(){
+	CColorDialog color;
+	color.DoModal();
+	COLORREF tmpColor = color.GetColor();
+	fogColor = RGB(GetBValue(tmpColor), GetGValue(tmpColor), GetRValue(tmpColor));
+	Invalidate();
+}
+
+
+
+void CCGWorkView::OnAliasing(){
+	_antiAliasing = !_antiAliasing;
+	Invalidate();
+}
+void CCGWorkView::OnAliasingUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(_antiAliasing);
+}
+
+void  CCGWorkView::OnBox(){
+	currentFilter = Box;
+	Invalidate();
+}
+
+void  CCGWorkView::OnBoxUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(currentFilter == Box);
+}
+
+void  CCGWorkView::OnTriangle(){
+	currentFilter = Triangle;
+	Invalidate();
+}
+
+void  CCGWorkView::OnTriangleUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(currentFilter == Triangle);
+}
+
+void  CCGWorkView::OnSinc(){
+	currentFilter = Sinc;
+	Invalidate();
+}
+
+void  CCGWorkView::OnSincUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(currentFilter == Sinc);
+}
+
+void  CCGWorkView::OnGaussien(){
+	currentFilter = Gaussien;
+	Invalidate();
+}
+
+void  CCGWorkView::OnGaussienUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(currentFilter == Gaussien);
+}
+
+void  CCGWorkView::OnSize3X3(){
+	filterSize = 3;
+	Invalidate();
+}
+
+void  CCGWorkView::OnSize3X3Update(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(filterSize == 3);
+}
+
+void  CCGWorkView::OnSize5X5(){
+	filterSize = 5;
+	Invalidate();
+}
+
+void  CCGWorkView::OnSize5X5Update(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(filterSize == 5);
+}
+
+void CCGWorkView::OnMotionBlur(){
+	_blur = !_blur;
+}
+void CCGWorkView::OnMotionBlurUpdate(CCmdUI* pCmdUI){
+	pCmdUI->SetCheck(_blur);
 }

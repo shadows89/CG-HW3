@@ -230,6 +230,15 @@ bool CGSkelStoreData(IPObjectStruct *PObj)
 
 			poly->add(p);
 			model->vertices->add(v);
+			float *UV;
+			if ((UV = AttrGetUVAttrib(PVertex->Attr, "uvvals")) != NULL){
+				/* UV values are in UV[0] and UV[1]. */
+				model->uvVertexList->add(new vec4(UV[0],UV[1], 0,0));
+				if (fabs(UV[0]) > model->maxUV)
+					model->maxUV = fabs(UV[0]);
+				if (fabs(UV[1]) > model->maxUV)
+					model->maxUV = fabs(UV[1]);
+			}
 			if (IP_HAS_NORMAL_VRTX(PVertex) != 0){
 				model->vertexNormals->add(new vec4(PVertex->Normal[0], PVertex->Normal[1], PVertex->Normal[2]));
 				model->givenVertexNormalHash.insert({ (*p).toString(), vec4(PVertex->Normal[0], PVertex->Normal[1], PVertex->Normal[2]) });
@@ -244,6 +253,7 @@ bool CGSkelStoreData(IPObjectStruct *PObj)
 	}
 	models.add(model);
 	model->calculateNormals();
+	model->normalizeUV();
 	/* Close the object. */
 
 	return true;

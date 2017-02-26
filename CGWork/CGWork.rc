@@ -62,11 +62,15 @@ BEGIN
     BUTTON      ID_EVERYTHING
     BUTTON      ID_SINGLE
     BUTTON      ID_POLYFILL
-
     BUTTON      ID_INVERSE
     BUTTON      ID_BACKFACE_CULLING
     BUTTON      ID_CREATE_PICTURE
     BUTTON      ID_SILHOUETTE
+    BUTTON      ID_RECORD
+    BUTTON      ID_PLAY
+    BUTTON      ID_FOG
+    BUTTON      ID_MOTIONBLUR
+    BUTTON      ID_ALIASING
 END
 
 
@@ -170,6 +174,25 @@ BEGIN
         BEGIN
             MENUITEM "Given",                       ID_VERTEX_GIVEN32844
             MENUITEM "Calculated",                  ID_VERTEX_CALCULATED32845
+        END
+    END
+    POPUP "Fog"
+    BEGIN
+        MENUITEM "Fog Color",                   ID_FOG_FOGCOLOR
+    END
+    POPUP "Anti Aliasing"
+    BEGIN
+        POPUP "Filter Type"
+        BEGIN
+            MENUITEM "Box",                         ID_FILTER_BOX
+            MENUITEM "Triangle",                    ID_FILTER_TRIANGLE
+            MENUITEM "Sinc",                        ID_FILTER_SINC
+            MENUITEM "Gaussien",                    ID_FILTER_GAUSSIEN
+        END
+        POPUP "Filter Size"
+        BEGIN
+            MENUITEM "5x5",                         ID_FILTERSIZE_5X5
+            MENUITEM "3x3",                         ID_FILTERSIZE_3X3
         END
     END
     POPUP "&Help"

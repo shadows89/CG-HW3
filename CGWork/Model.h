@@ -30,6 +30,8 @@ public:
 	VertexNormalHash givenVertexNormalHash;
 	VertexNormalHash calculatedVertexNormalHash;
 
+	CG_NormalList* uvVertexList;
+
 	EdgePloygonHash edgeGivenPolygonNormalHash;
 	EdgePloygonHash edgeCalculatedPolygonNormalHash;
 	COLORREF color;
@@ -39,6 +41,8 @@ public:
 	double maxX = INT64_MIN, maxY = INT64_MIN, maxZ = INT64_MIN;
 	double minX = INT64_MAX, minY = INT64_MAX, minZ = INT64_MAX;
 
+	double maxUV = INT64_MIN;
+
 	Model(CG_PolygonList* polygons,CG_NormalList* polygonNormals,CG_NormalList* vertexNormals,COLORREF color){
 		this->polygons = polygons;
 		this->polygonNormals = polygonNormals;
@@ -47,6 +51,7 @@ public:
 		position = mat4::eye();
 		calculatedPolygonNormals = new CG_NormalList;
 		calculatedVertexNormals = new CG_NormalList;
+		uvVertexList = new CG_NormalList;
 		vertices = new CG_Polygon;
 		polygonMids = new CG_Polygon;
 	}
@@ -60,6 +65,7 @@ public:
 					iter != edgeGivenPolygonNormalHash.end(); iter++){
 			delete std::get<1>(*iter);
 		}
+		delete uvVertexList;
 		delete calculatedPolygonNormals;
 		delete calculatedVertexNormals;
 		delete polygons;
@@ -223,6 +229,14 @@ public:
 				normalList->add(polyNormal);
 			}
 		}*/
+	}
+
+	void normalizeUV(){
+		if (uvVertexList->getSize() != 0)
+			for (CG_Point* uv = uvVertexList->first(); uv != NULL; uv = uvVertexList->next()){
+				(*uv)[0] = (*uv)[0] / maxUV;
+				(*uv)[1] = (*uv)[1] / maxUV;
+			}
 	}
 };
 

@@ -103,13 +103,28 @@
 #define ID_VERTEX_GIVEN32844            32844
 #define ID_VERTEX_CALCULATED32845       32845
 #define ID_COLOR_SILHOUTTE              32846
+#define ID_RECORD                       32849
+#define ID_PLAY                         32850
+#define ID_FOG                          32851
+#define ID_FOG_FOGCOLOR                 32852
+#define ID_ANTIALIASING_FILTER          32853
+#define ID_FILTER_BOX                   32854
+#define ID_FILTER_TRIANGLE              32855
+#define ID_FILTER_SINC                  32856
+#define ID_FILTER_GAUSSIEN              32857
+#define ID_ANTIALIASING_FILTERSIZE      32858
+#define ID_FILTERSIZE_5X5               32859
+#define ID_FILTERSIZE_3X3               32860
+#define ID_MOTIONBLUR                   32863
+#define ID_BUTTON32864                  32864
+#define ID_ALIASING                     32864
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        141
-#define _APS_NEXT_COMMAND_VALUE         32847
+#define _APS_NEXT_COMMAND_VALUE         32865
 #define _APS_NEXT_CONTROL_VALUE         1044
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
