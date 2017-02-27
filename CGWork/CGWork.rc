@@ -195,6 +195,10 @@ BEGIN
             MENUITEM "3x3",                         ID_FILTERSIZE_3X3
         END
     END
+    POPUP "Blur"
+    BEGIN
+        MENUITEM "Settings",                    ID_BLUR_SETTINGS
+    END
     POPUP "&Help"
     BEGIN
         MENUITEM "&About CGWork...",            ID_APP_ABOUT
@@ -345,6 +349,24 @@ BEGIN
     EDITTEXT        IDC_EDIT3,20,87,138,14,ES_AUTOHSCROLL
 END
 
+IDD_FORMVIEW DIALOGEX 0, 0, 185, 93
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    LTEXT           "TODO: layout formview",IDC_STATIC,19,41,74,8
+    LTEXT           "Static",IDC_STATIC,0,0,19,8
+END
+
+IDD_PROPPAGE_SMALL1 DIALOGEX 0, 0, 195, 127
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Property Page"
+FONT 8, "MS Shell Dlg", 400, 0, 0x0
+BEGIN
+    LTEXT           "Blur Factor:",IDC_STATIC,17,56,40,8
+    PUSHBUTTON      "OK",IDC_BUTTON1,73,94,50,14
+    EDITTEXT        IDC_EDIT1,65,54,57,14,ES_AUTOHSCROLL
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -430,6 +452,22 @@ BEGIN
         RIGHTMARGIN, 176
         TOPMARGIN, 7
         BOTTOMMARGIN, 148
+    END
+
+    IDD_FORMVIEW, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 178
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 86
+    END
+
+    IDD_PROPPAGE_SMALL1, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 188
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 120
     END
 END
 #endif    // APSTUDIO_INVOKED

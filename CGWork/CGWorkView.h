@@ -19,6 +19,7 @@
 #include "Camera.hpp"
 #include "Model.h"
 #include "SensetivityDialog.h"
+#include "BlurDialog.h"
 class CCGWorkView : public CView
 {
 protected: // create from serialization only
@@ -46,6 +47,7 @@ private:
 	Camera camera;
 
 	SensetivityDialog settings;
+	BlurDialog blurSettings;
 
 	CString m_strItdFileName;		// file name of IRIT data
 
@@ -229,6 +231,7 @@ protected:
 	afx_msg void OnMotionBlur();
 	afx_msg void OnMotionBlurUpdate(CCmdUI* pCmdUI);
 
+	afx_msg void OnOpenBlurSettings();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

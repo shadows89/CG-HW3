@@ -3,12 +3,14 @@
 // Used by CGWork.rc
 //
 #define IDD_ABOUTBOX                    100
+#define IDD_FORMVIEW                    101
 #define IDD_PROPPAGE_SMALL              102
 #define IDR_MAINFRAME                   128
 #define IDR_CGWorkTYPE                  129
 #define IDD_LIGHTS_DLG                  134
 #define IDD_MATERIAL_DLG                136
 #define IDD_DIALOG1                     140
+#define IDD_PROPPAGE_SMALL1             141
 #define IDC_LIGHT_SPACE                 1010
 #define IDC_RADIO_LIGHT1                1017
 #define IDC_RADIO_LIGHT2                1018
@@ -116,15 +118,15 @@
 #define ID_FILTERSIZE_5X5               32859
 #define ID_FILTERSIZE_3X3               32860
 #define ID_MOTIONBLUR                   32863
-#define ID_BUTTON32864                  32864
 #define ID_ALIASING                     32864
+#define ID_BLUR_SETTINGS                32865
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        141
-#define _APS_NEXT_COMMAND_VALUE         32865
+#define _APS_NEXT_COMMAND_VALUE         32866
 #define _APS_NEXT_CONTROL_VALUE         1044
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
